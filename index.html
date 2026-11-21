@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>عمرو أبو عياد | السيرة الذاتية</title>
+<meta name="description" content="السيرة الذاتية لعمرو أبو عياد، محلل بيانات">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --text:#1c2430; --muted:#5b6675;
+  --accent:#0f766e; --accent-soft:#e6f4f2; --line:#e3e7ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1419; --card:#171e26; --text:#e7ecf2; --muted:#9aa6b4;
+    --accent:#2dd4bf; --accent-soft:#12302d; --line:#26303b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1419; --card:#171e26; --text:#e7ecf2; --muted:#9aa6b4;
+  --accent:#2dd4bf; --accent-soft:#12302d; --line:#26303b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.8;font-size:16px}
+.wrap{max-width:880px;margin:0 auto;padding:32px 16px 64px}
+.toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:16px}
+.toolbar button{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 14px;font:inherit;font-size:14px;cursor:pointer}
+.toolbar button:hover{border-color:var(--accent)}
+header.hero{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:32px;display:flex;gap:28px;align-items:center}
+.avatar{width:120px;height:120px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700;color:var(--accent)}
+.hero h1{font-size:30px;line-height:1.3}
+.hero .role{color:var(--accent);font-weight:600;font-size:18px;margin-top:4px}
+.hero .summary{color:var(--muted);margin-top:10px}
+.contacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.contacts a{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--text);background:var(--accent-soft);border-radius:999px;padding:4px 14px;font-size:14px}
+.contacts a:hover{color:var(--accent)}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-top:20px}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
+section.card h2{font-size:19px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+section.card h2::before{content:"";width:6px;height:20px;border-radius:3px;background:var(--accent)}
+.item{padding-bottom:16px;margin-bottom:16px;border-bottom:1px dashed var(--line)}
+.item:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.item h3{font-size:16px}
+#certs .item{padding-bottom:6px;margin-bottom:6px}
+#certs .item h3{font-weight:500;font-size:15px}
+.item .meta{color:var(--muted);font-size:14px}
+.item ul{margin-top:6px;padding-inline-start:20px}
+.item li{margin:2px 0}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tags span{background:var(--accent-soft);color:var(--text);border-radius:8px;padding:3px 12px;font-size:14px}
+.stack>section+section{margin-top:20px}
+footer{text-align:center;color:var(--muted);font-size:13px;margin-top:32px}
+@media (max-width:720px){
+  header.hero{flex-direction:column;text-align:center;padding:24px}
+  .contacts{justify-content:center}
+  .grid{grid-template-columns:1fr}
+}
+@media print{
+  .toolbar{display:none}
+  body{background:#fff}
+  section.card,header.hero{border:none;padding:12px 0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="toolbar">
+    <button id="langBtn" type="button">English</button>
+    <button id="printBtn" type="button">⬇ PDF</button>
+  </div>
+
+  <header class="hero">
+    <div class="avatar" id="avatar"></div>
+    <div>
+      <h1 id="name"></h1>
+      <div class="role" id="role"></div>
+      <p class="summary" id="summary"></p>
+      <div class="contacts" id="contacts"></div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="stack">
+      <section class="card"><h2 id="h-exp"></h2><div id="experience"></div></section>
+      <section class="card"><h2 id="h-edu"></h2><div id="education"></div></section>
+    </div>
+    <div class="stack">
+      <section class="card"><h2 id="h-skills"></h2><div class="tags" id="skills"></div></section>
+      <section class="card"><h2 id="h-langs"></h2><div class="tags" id="languages"></div></section>
+      <section class="card"><h2 id="h-certs"></h2><div id="certs"></div></section>
+    </div>
+  </div>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+/* ======== عدّل معلوماتك هنا ======== */
+const CV = {
+  photo: "", // ضع اسم ملف الصورة هنا، مثال: "photo.jpg"
+  ar: {
+    name: "عمرو هيثم أبو عياد",
+    role: "محلل بيانات | Data Analyst",
+    summary: "محلل بيانات أحوّل البيانات الخام إلى لوحات مؤشرات وتقارير تدعم اتخاذ القرار. نفّذت مشاريع تحليلية لجهات حكومية في قطاعي العدل والنقل، شملت تحليل أكثر من 2.5 مليون سجل وبناء لوحات متابعة للأداء والمؤشرات المالية. أدرس بكالوريوس علم البيانات (مسار الذكاء الاصطناعي) في الجامعة السعودية الإلكترونية.",
+    experience: [
+      { title: "محلل بيانات", org: "مشاريع مركز التدريب العدلي – وزارة العدل", period: "2025",
+        points: [
+          "حلّلت أكثر من 2.5 مليون سجل تدريبي لقياس كفاءة التدريب، وكشفت الفجوات والمشكلات المؤثرة فيه، وقدّمت حلولًا وخططًا لتحسينه.",
+          "بنيت لوحة مؤشرات على Metabase مرتبطة آليًا بمنصة التذاكر، تقيس الفرق بين التذاكر المنجزة والمتأخرة وزمن المعالجة، وتصنّف الطلبات حسب النوع والأولوية."
+        ] },
+      { title: "محلل بيانات", org: "جائزة وزارة النقل", period: "2025",
+        points: [
+          "صمّمت لوحة مؤشرات شاملة لمساهمات الرعاة ومواعيد السداد وتكاليف الموظفين والتدفقات النقدية (Cash In / Cash Out) والأرباح، لمتابعة الأداء المالي والتشغيلي.",
+          "أعددت لوحة مؤشرات أداء رئيسية (KPIs) لمعالي وزير النقل لقياس المؤشرات الاستراتيجية للجائزة وتتبّعها.",
+          "صنّفت مشاركات الجائزة وحلّلتها، مما سهّل عملية التقييم ورفع جودة التحكيم.",
+          "ساهمت في مشروع «سند» بتحليل البيانات ودعم تحسين كفاءة العمليات."
+        ] },
+      { title: "منتج محتوى ومطوّر مواقع", org: "عمل حر", period: "",
+        points: [
+          "أنتجت حالات تصويرية (أفلام تعليمية) لصالح مؤسسة تدريبية مرموقة، وبطاقات وصف محتوى لمقررات تدريبية.",
+          "أنشأت موقعًا إلكترونيًا لشركة استشارية ومتجرًا إلكترونيًا لمؤسسة.",
+          "غطّيت فعاليات ومؤتمرات ومعارض إعلاميًا بالتصوير."
+        ] }
+    ],
+    education: [ { title: "بكالوريوس علم البيانات – مسار الذكاء الاصطناعي", org: "الجامعة السعودية الإلكترونية", period: "2025" } ],
+    skills: ["Power BI", "Metabase", "Excel متقدم", "تحليل البيانات وتصويرها", "لوحات المؤشرات (KPIs)", "أساسيات قواعد البيانات", "التحليل الإحصائي الوصفي", "تعلم الآلة (أساسيات)", "التواصل الفعّال", "حل المشكلات", "العمل ضمن فريق", "إدارة الوقت"],
+    languages: ["العربية (اللغة الأم)", "الإنجليزية"],
+    certs: [
+      { title: "محترف Power BI", org: "", period: "" },
+      { title: "محترف MetaBase", org: "", period: "" },
+      { title: "تحليل البيانات باستخدام Excel", org: "", period: "" },
+      { title: "علم البيانات وتعلم الآلة", org: "", period: "" },
+      { title: "مقدمة في تحليل البيانات والإحصاء الوصفي", org: "", period: "" },
+      { title: "مقدمة في الذكاء الاصطناعي", org: "", period: "" },
+      { title: "مقدمة في حوكمة الشركات", org: "", period: "" },
+      { title: "التحليل الإحصائي باستخدام SPSS (قيد الدراسة)", org: "", period: "" }
+    ]
+  },
+  en: {
+    name: "Amr Haitham Abu Ayyad",
+    role: "Data Analyst",
+    summary: "Data analyst who turns raw data into dashboards and reports that drive decisions. Delivered analytics projects for government entities in the justice and transport sectors, including analysis of 2.5M+ records and dashboards tracking performance and financial KPIs. B.Sc. in Data Science (AI track), Saudi Electronic University.",
+    experience: [
+      { title: "Data Analyst", org: "Judicial Training Center projects – Ministry of Justice", period: "2025",
+        points: [
+          "Analyzed 2.5M+ training records to measure training effectiveness, identify gaps and issues, and propose improvement plans.",
+          "Built a Metabase dashboard connected live to the ticketing platform, tracking resolved vs. overdue tickets and resolution time, and classifying requests by type and priority."
+        ] },
+      { title: "Data Analyst", org: "Ministry of Transport Award", period: "2025",
+        points: [
+          "Designed a dashboard covering sponsor contributions, payment schedules, staff costs, cash in/out and profit to monitor financial and operational performance.",
+          "Built a KPI dashboard for H.E. the Minister of Transport to track the award's strategic indicators.",
+          "Classified and analyzed award submissions, streamlining evaluation and improving judging quality.",
+          "Contributed to the \"Sanad\" project through data analysis to improve process efficiency."
+        ] },
+      { title: "Content Producer & Web Developer", org: "Freelance", period: "",
+        points: [
+          "Produced educational case-study films and course content cards for a leading training organization.",
+          "Built a website for a consulting firm and an e-commerce store.",
+          "Photographed events, conferences and exhibitions."
+        ] }
+    ],
+    education: [ { title: "B.Sc. Data Science – AI Track", org: "Saudi Electronic University", period: "2025" } ],
+    skills: ["Power BI", "Metabase", "Advanced Excel", "Data Analysis & Visualization", "KPI Dashboards", "Database Fundamentals", "Descriptive Statistics", "Machine Learning Basics", "Communication", "Problem Solving", "Teamwork", "Time Management"],
+    languages: ["Arabic (Native)", "English"],
+    certs: [
+      { title: "Power BI Professional", org: "", period: "" },
+      { title: "Metabase Professional", org: "", period: "" },
+      { title: "Data Analysis with Excel", org: "", period: "" },
+      { title: "Data Science & Machine Learning", org: "", period: "" },
+      { title: "Intro to Data Analysis & Descriptive Statistics", org: "", period: "" },
+      { title: "Intro to Artificial Intelligence", org: "", period: "" },
+      { title: "Intro to Corporate Governance", org: "", period: "" },
+      { title: "Statistical Analysis with SPSS (in progress)", org: "", period: "" }
+    ]
+  },
+  contacts: [
+    { label: "✉ amrooabuayyad@gmail.com", labelEn: "✉ amrooabuayyad@gmail.com", href: "mailto:amrooabuayyad@gmail.com" }
+    
+  ]
+};
+/* ==================================== */
+
+const UI = {
+  ar: { exp:"الخبرات والمشاريع العملية", edu:"التعليم", skills:"المهارات", langs:"اللغات", certs:"الشهادات والدورات", switch:"English", footer:"© " + new Date().getFullYear() },
+  en: { exp:"Experience & Projects", edu:"Education", skills:"Skills", langs:"Languages", certs:"Certifications", switch:"العربية", footer:"© " + new Date().getFullYear() }
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const items = list => list.map(i => `<div class="item"><h3>${esc(i.title)}</h3>${[i.org,i.period].filter(Boolean).length ? `<div class="meta">${[i.org,i.period].filter(Boolean).map(esc).join(" · ")}</div>` : ""}${i.points ? "<ul>" + i.points.map(p => `<li>${esc(p)}</li>`).join("") + "</ul>" : ""}</div>`).join("");
+
+function render(lang){
+  const d = CV[lang], u = UI[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  document.title = d.name + (lang === "ar" ? " | السيرة الذاتية" : " | CV");
+  $("avatar").innerHTML = CV.photo ? `<img class="avatar" src="${esc(CV.photo)}" alt="">` : esc(d.name.trim()[0] || "");
+  $("name").textContent = d.name; $("role").textContent = d.role; $("summary").textContent = d.summary;
+  $("contacts").innerHTML = CV.contacts.map(c => `<a href="${esc(c.href)}" target="_blank" rel="noopener">${esc(lang === "ar" ? c.label : c.labelEn)}</a>`).join("");
+  $("h-exp").textContent = u.exp; $("h-edu").textContent = u.edu; $("h-skills").textContent = u.skills; $("h-langs").textContent = u.langs; $("h-certs").textContent = u.certs;
+  $("experience").innerHTML = items(d.experience); $("education").innerHTML = items(d.education); $("certs").innerHTML = items(d.certs);
+  $("skills").innerHTML = d.skills.map(s => `<span>${esc(s)}</span>`).join("");
+  $("languages").innerHTML = d.languages.map(s => `<span>${esc(s)}</span>`).join("");
+  $("langBtn").textContent = u.switch; $("footer").textContent = u.footer + " " + d.name;
+}
+let lang = "ar";
+$("langBtn").onclick = () => { lang = lang === "ar" ? "en" : "ar"; render(lang); };
+$("printBtn").onclick = () => window.print();
+render(lang);
+</script>
+</body>
+</html>
