@@ -315,38 +315,42 @@ float vnoise(vec3 p){
              mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + 1.0), f.x), f.y), f.z);
 }
 // electricity: bolts of light that branch out from where the pointer touches the cortex, each
-// stroke lasting a split second before a new pattern fires, with a bright synapse at the centre
-// and a glow around every filament (thin cores, tinted light, no white blow-out)
+// stroke lasting a split second before a new pattern fires. Bolts differ: some reach far across
+// the brain, some stay short; some are thick, some hair-thin; each tapers as it runs out.
 vec2 zapArcs(vec3 p){
   vec3 r = p - uZapP;
   float zd = length(r);
-  if (zd > 1.25) return vec2(0.0);
+  if (zd > 1.9) return vec2(0.0);
   vec3 dir = r / max(zd, 1e-4);
   float st = floor(uTime * 16.0);
   vec3 o = vec3(st * 1.73, st * 2.31, st * 0.97);
-  float flick = 0.72 + 0.28 * hash3(vec3(st, 3.0, 9.0));
+  float flick = 0.75 + 0.25 * hash3(vec3(st, 3.0, 9.0));
   // noise mostly over the direction: its isolines run outwards like bolts and wiggle on the way
   vec3 q = dir * 2.6 + r * 2.2 + o;
   float n = vnoise(q) * 0.7 + vnoise(q * 2.9 + 5.3) * 0.3;
   float fw = fwidth(n);
   float ok = clamp((0.35 - fw) * 4.0, 0.0, 1.0);
   float d = abs(n - 0.5);
-  float core = (1.0 - smoothstep(0.0, fw * 1.2 + 0.003, d)) * ok;
-  float halo = exp(-d / (fw * 3.0 + 0.02)) * ok;
-  // finer side branches
+  // per bolt (over the direction, re-rolled every stroke): its length, thickness and strength
+  float lv = vnoise(dir * 2.2 + o * 0.7 + 2.0);
+  float len = 0.28 + 1.45 * lv * lv;
+  float wk = 0.45 + 1.5 * vnoise(dir * 3.7 + o * 0.5 + 8.0);
+  float bk = 0.55 + 0.45 * vnoise(dir * 4.9 + o * 0.9 + 4.0);
+  float taper = clamp(1.0 - zd / len, 0.0, 1.0);
+  float core = (1.0 - smoothstep(0.0, (fw * 1.1 + 0.0025) * wk * (0.5 + 0.5 * taper), d)) * ok;
+  float halo = exp(-d / ((fw * 3.0 + 0.018) * wk)) * ok;
+  float reach = smoothstep(0.0, 0.35, taper);
+  // finer, shorter side branches off the main bolts
   vec3 q2 = dir * 5.5 + r * 4.0 + o * 1.37 + 11.0;
   float n2 = vnoise(q2);
   float fw2 = fwidth(n2);
   float d2 = abs(n2 - 0.5);
-  float core2 = (1.0 - smoothstep(0.0, fw2 * 1.1 + 0.002, d2)) * clamp((0.35 - fw2) * 4.0, 0.0, 1.0);
-  // every bolt has its own length this stroke
-  float len = 0.32 + 0.5 * vnoise(dir * 3.1 + o * 0.7 + 2.0);
-  float reach = 1.0 - smoothstep(len * 0.45, len, zd);
-  float reach2 = 1.0 - smoothstep(len * 0.25, len * 0.7, zd);
-  float spot = exp(-zd * zd * 140.0);
-  float wave = exp(-pow((zd - uZapT * 1.6) * 9.0, 2.0)) * exp(-uZapT * 1.5);
-  float c = (core * reach + core2 * reach2 * 0.6) * flick + spot * 0.55;
-  float g = halo * reach * 0.5 * flick + exp(-zd * zd * 18.0) * 0.22 + wave * 0.3;
+  float core2 = (1.0 - smoothstep(0.0, fw2 * 0.9 + 0.0018, d2)) * clamp((0.35 - fw2) * 4.0, 0.0, 1.0);
+  float reach2 = smoothstep(0.0, 0.4, clamp(1.0 - zd / (len * 0.6), 0.0, 1.0));
+  float spot = exp(-zd * zd * 160.0);
+  float wave = exp(-pow((zd - uZapT * 1.8) * 8.0, 2.0)) * exp(-uZapT * 1.3);
+  float c = (core * reach * bk + core2 * reach2 * 0.45 * bk) * flick + spot * 0.35;
+  float g = halo * reach * bk * 0.36 * flick + exp(-zd * zd * 14.0) * 0.14 + wave * 0.22;
   return uZap * vec2(c, g);
 }
 float contour(float c){
@@ -381,7 +385,7 @@ void main(){
       + uLine * sb * (0.05 + 0.5 * ln) + uEdge * sb * ln * 0.2
       + (uLine * 0.8 + uEdge * 0.5) * edge
       + (line * 0.6 + uEdge * 0.22) * hot * (0.14 + 0.85 * ln + 0.75 * fres) * ao
-      + vec3(0.78, 0.97, 1.0) * zz.x * 1.05 + (uLine * 0.85 + uEdge * 0.2) * zz.y;
+      + vec3(0.72, 0.95, 1.0) * zz.x * 0.85 + (uLine * 0.85 + uEdge * 0.2) * zz.y;
     gl_FragColor = glow(col * uAlpha);
   } else {
     // on a light page the glass needs firmer lines and a deeper body to hold its shape
@@ -433,7 +437,7 @@ void main(){
   float zs = floor(uTime * 15.0);
   float zf = fract(sin(dot(vec2(zs, floor(vF * 9.0)), vec2(12.9898, 78.233))) * 43758.5453);
   // shocked: quick impulses race along every fibre, and the fibres near the touch fire hardest
-  float zn = exp(-dot(vQ - uZapP, vQ - uZapP) * 3.5);
+  float zn = exp(-dot(vQ - uZapP, vQ - uZapP) * 1.6);
   float zph = fract(vD * 2.3 + vF * 3.1 - uTime * 4.8);
   float zp = smoothstep(0.86, 0.98, zph) * (1.0 - smoothstep(0.98, 1.0, zph)) * uZap * (0.55 + 0.45 * zf) * (0.75 + 0.9 * zn);
   pulse = max(pulse, zp) + uZap * zn * zf * 0.35;
@@ -1208,7 +1212,9 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const idle = reduced ? 0 : Math.sin(time * 0.23) * 0.06;
     flow.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
     if (portrait) flow.scale.set(cur.s, cur.s * side, cur.s); else flow.scale.set(cur.s * side, cur.s, cur.s);
-    flow.rotation.set(smy * 0.5 * tilt, smx * 1.08 * tilt + idle, cur.rot);
+    // the intro plays face-on and calm; the brain starts following the pointer only once it has formed
+    const tk = tilt * ease(clamp01((T - T_FORMED + 0.5) / 1.4));
+    flow.rotation.set(smy * 0.5 * tk, smx * 1.08 * tk + idle, cur.rot);
     flow.updateMatrixWorld();
     uniforms.uFlowM.value.copy(flow.matrixWorld);
     uniforms.uBrainM.value.copy(brainG.matrixWorld);
@@ -1241,8 +1247,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uNetM.value.copy(netGroup.matrixWorld);
     netMat.opacity = pal.netOp * netFade * (1 - clamp01(morph * 1.6));
 
-    camera.position.x = smx * 1.35 * tilt;
-    camera.position.y = -smy * 0.72 * tilt;
+    camera.position.x = smx * 1.35 * tk;
+    camera.position.y = -smy * 0.72 * tk;
     camera.lookAt(0, 0, 0);
     uniforms.uCam.value.copy(camera.position);
     renderer.render(scene, camera);
