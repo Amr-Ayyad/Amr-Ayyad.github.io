@@ -299,14 +299,35 @@ void main(){
   gl_FragColor = vec4(0.0);
 }`;
 const BR_FRAG = /* glsl */ `${GLOW}
-uniform float uTime, uReveal, uFx, uScan, uLight, uAlpha, uDensity, uHot, uAxL;
-uniform vec3 uFill, uLine, uRim, uEdge;
+uniform float uTime, uReveal, uFx, uScan, uLight, uAlpha, uDensity, uHot, uAxL, uZap, uZapT;
+uniform vec3 uFill, uLine, uRim, uEdge, uZapP;
 varying vec3 vN;
 varying vec3 vV;
 varying vec3 vP;
 varying float vAO;
 varying float vD;
 varying vec3 vTint;
+float hash3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vnoise(vec3 p){
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x), mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + 1.0), f.x), f.y), f.z);
+}
+// electricity: thin forked arcs that jump to a new path many times a second, densest where the
+// pointer touches, with a shock wave running out from that point
+float zapArcs(vec3 p){
+  float st = floor(uTime * 15.0);
+  vec3 q = p * 4.2 + vec3(st * 1.73, st * 2.31, st * 0.97);
+  float n = vnoise(q) * 0.65 + vnoise(q * 2.3 + 7.1) * 0.35;
+  float w = fwidth(n) * 1.3 + 0.004;
+  float arc = 1.0 - smoothstep(0.0, w, abs(n - 0.5));
+  float flick = 0.55 + 0.45 * hash3(vec3(st, 3.0, 9.0));
+  float zd = length(p - uZapP);
+  float near = exp(-zd * zd * 2.2);
+  float wave = exp(-pow((zd - uZapT * 1.9) * 6.0, 2.0)) * exp(-uZapT * 1.4);
+  return uZap * (arc * flick * (0.25 + 1.1 * near) + wave * 0.7 + near * 0.12);
+}
 float contour(float c){
   float fw = fwidth(c);
   float d = abs(fract(c - 0.5) - 0.5);
@@ -328,6 +349,7 @@ void main(){
   vec3 line = mix(uLine, vTint, 0.42);
   vec3 fill = mix(uFill, vTint, 0.3);
   float hot = uHot;
+  float zap = uZap > 0.001 ? zapArcs(vP) : 0.0;
   float key = 0.75 + 0.25 * clamp(dot(n, normalize(vec3(-0.35, 0.75, 0.55))), 0.0, 1.0);
   if (uLight < 0.5) {
     vec3 col = fill * (0.06 + 0.3 * fres) * ao * key
@@ -336,12 +358,14 @@ void main(){
       + uRim * fres * 0.9
       + uLine * sb * (0.05 + 0.5 * ln) + uEdge * sb * ln * 0.2
       + (uLine * 0.8 + uEdge * 0.5) * edge
-      + (line * 0.6 + uEdge * 0.22) * hot * (0.14 + 0.85 * ln + 0.75 * fres) * ao;
+      + (line * 0.6 + uEdge * 0.22) * hot * (0.14 + 0.85 * ln + 0.75 * fres) * ao
+      + (vec3(0.72, 0.96, 1.0) + uEdge * 0.4) * zap;
     gl_FragColor = glow(col * uAlpha);
   } else {
     float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.26 * ln) + edge * 0.7
-      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao;
-    gl_FragColor = vec4(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), clamp(a, 0.0, 0.92) * uAlpha);
+      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zap * 0.85;
+    vec3 lc = mix(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), uEdge, clamp(zap, 0.0, 1.0));
+    gl_FragColor = vec4(lc, clamp(a, 0.0, 0.95) * uAlpha);
   }
 }`;
 const HALO_FRAG = /* glsl */ `${GLOW}
@@ -369,7 +393,7 @@ void main(){
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 const N_FRAG = /* glsl */ `${GLOW}
-uniform float uTime, uGrow, uAlpha, uLight, uTipEnd;
+uniform float uTime, uGrow, uAlpha, uLight, uTipEnd, uZap;
 uniform vec3 uCol, uPulse;
 varying float vD;
 varying float vF;
@@ -379,9 +403,14 @@ void main(){
   // impulses run along each fibre, drifting overall the way the data flows
   float ph = fract(vD * 0.32 + vF * 0.45 - uTime * 0.45);
   float pulse = smoothstep(0.8, 0.97, ph) * (1.0 - smoothstep(0.97, 1.0, ph));
-  float k = clamp(pulse * 1.1 + tip, 0.0, 1.0);
-  if (uLight < 0.5) gl_FragColor = glow(mix(uCol, uPulse, k) * (0.36 + pulse * 1.2 + tip * 1.4) * uAlpha);
-  else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.28 + pulse * 0.6 + tip, 0.0, 1.0) * uAlpha);
+  // shocked: every fibre fires fast impulses and flickers
+  float zs = floor(uTime * 15.0);
+  float zf = fract(sin(dot(vec2(zs, floor(vF * 9.0)), vec2(12.9898, 78.233))) * 43758.5453);
+  float zp = smoothstep(0.82, 0.97, fract(vD * 1.4 + vF * 2.7 - uTime * 2.8)) * uZap * (0.5 + zf);
+  pulse = max(pulse, zp);
+  float k = clamp(pulse * 1.1 + tip + uZap * 0.4 * zf, 0.0, 1.0);
+  if (uLight < 0.5) gl_FragColor = glow(mix(uCol, uPulse, k) * (0.36 + pulse * 1.2 + tip * 1.4 + uZap * 0.5 * zf) * uAlpha);
+  else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.28 + pulse * 0.6 + tip + uZap * 0.35 * zf, 0.0, 1.0) * uAlpha);
 }`;
 // beams and pathways: thin lines and soft light ribbons that grow along their length
 const HOT = /* glsl */ `
@@ -562,6 +591,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   const bodyU = {
     uTime: { value: 0 }, uReveal: { value: -9 }, uFx: { value: 0 }, uScan: { value: -9 }, uLight: { value: 0 },
     uAlpha: { value: 1 }, uDensity: { value: 28 }, uInflate: { value: 0 }, uHot: { value: 0 },
+    uZap: { value: 0 }, uZapT: { value: 9 }, uZapP: { value: new THREE.Vector3(0, 9, 0) },
     uAx: uniforms.uAx, uAx0: uniforms.uAx0, uAxL: uniforms.uAxL,
     uFill: { value: new THREE.Color() }, uLine: { value: new THREE.Color() }, uRim: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() },
     uTA: { value: new THREE.Color() }, uTB: { value: new THREE.Color() },
@@ -571,10 +601,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   const haloU = { uInflate: { value: 0.034 }, uReveal: bodyU.uReveal, uLight: bodyU.uLight, uAlpha: { value: 0 }, uRim: { value: new THREE.Color() }, uAx: uniforms.uAx, uAx0: uniforms.uAx0, uTA: bodyU.uTA, uTB: bodyU.uTB };
   const haloMat = new THREE.ShaderMaterial({ uniforms: haloU, vertexShader: BR_VERT, fragmentShader: HALO_FRAG, transparent: true, depthWrite: false, side: THREE.BackSide });
   for (const m of [depthMat, holoMat, haloMat]) m.extensions = { derivatives: true };
-  const nerveU = { uTime: { value: 0 }, uGrow: { value: -1 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uTipEnd: { value: 2.6 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() }, uAx: uniforms.uAx, uAx0: uniforms.uAx0 };
+  const nerveU = { uTime: { value: 0 }, uGrow: { value: -1 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uZap: bodyU.uZap, uTipEnd: { value: 2.6 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() }, uAx: uniforms.uAx, uAx0: uniforms.uAx0 };
   const nerveMat = new THREE.ShaderMaterial({ uniforms: nerveU, vertexShader: N_VERT, fragmentShader: N_FRAG, transparent: true, depthWrite: false, depthTest: false });
   const linkMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-  let body = null, bodyFailed = false;
+  let body = null, bodyFailed = false, hitMesh = null;
 
   function buildBody(B) {
     const g = new THREE.BufferGeometry();
@@ -585,6 +615,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     g.setIndex(new THREE.BufferAttribute(B.index, 1));
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1.6);
     const pre = new THREE.Mesh(g, depthMat); pre.renderOrder = 0;
+    hitMesh = pre;
     const halo = new THREE.Mesh(g, haloMat); halo.renderOrder = 1;
     const holo = new THREE.Mesh(g, holoMat); holo.renderOrder = 2;
     brainG.add(pre, halo, holo);
@@ -970,7 +1001,39 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   // ── input ──
   let mx = 0, my = 0, smx = 0, smy = 0;
   const tilt = reduced ? 0.4 : 1; // how far the figure turns towards the pointer
-  addEventListener('pointermove', (e) => { mx = (e.clientX / innerWidth) * 2 - 1; my = (e.clientY / innerHeight) * 2 - 1; }, { passive: true });
+  addEventListener('pointermove', (e) => { mx = (e.clientX / innerWidth) * 2 - 1; my = (e.clientY / innerHeight) * 2 - 1; zapAsk = e; }, { passive: true });
+  // a touch (or click) on the brain gives it a jolt
+  addEventListener('pointerdown', (e) => { zapAsk = e; zapTap = true; }, { passive: true });
+  document.documentElement.addEventListener('mouseleave', () => { zapAsk = null; zapOn = false; });
+  // ── electricity: the pointer on the brain ──
+  let zapAsk = null, zapTap = false, zapOn = false, zapKick = 0, zapLevel = 0, zapT0 = -9;
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), zp = new THREE.Vector3();
+  function zapUpdate(dt) {
+    if (zapAsk && hitMesh && T >= T_FORMED && scrollK < 0.3) {
+      const e = zapAsk; zapAsk = null;
+      // over a label or a button the brain stays calm
+      const over = e.target && e.target.closest && e.target.closest('a, button, .hero-text');
+      ndc.set((e.clientX / W) * 2 - 1, -(e.clientY / H) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const hit = over ? null : ray.intersectObject(hitMesh, false)[0];
+      const was = zapOn;
+      zapOn = !!hit && e.pointerType === 'mouse';
+      if (hit) {
+        zp.copy(hit.point); hitMesh.worldToLocal(zp);
+        bodyU.uZapP.value.lerp(zp, was ? 0.35 : 1);
+        if (!was || zapTap) zapT0 = time;
+        if (zapTap) zapKick = 1;
+      }
+      zapTap = false;
+    } else if (zapAsk) { zapAsk = null; zapOn = false; zapTap = false; }
+    zapKick = Math.max(0, zapKick - dt / 1.3);
+    const want = Math.max(zapOn ? 1 : 0, zapKick);
+    // the shock arrives at once and fades out more gently
+    zapLevel += (want - zapLevel) * Math.min(1, dt * (want > zapLevel ? 14 : 3.2));
+    bodyU.uZap.value = zapLevel < 0.003 ? 0 : zapLevel;
+    bodyU.uZapT.value = time - zapT0;
+    if (zapOn && time - zapT0 > 1.6) zapT0 = time; // keep the waves coming while the pointer rests there
+  }
 
   // ── timeline ──
   let T = reduced ? T_END : 0, speed = 1, time = 0, last = performance.now(), scrollK = 0, frameNo = 0, freezeT = null;
@@ -1101,8 +1164,9 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const kf = Math.min(1, dt * 7);
     for (const k in hotK) hotK[k] += (hot[k] - hotK[k]) * kf;
     uniforms.uHotRaw.value = hotK.raw;
-    uniforms.uHotBrain.value = hotK.brain;
-    bodyU.uHot.value = Math.max(hotK.brain, ...calls.filter((c) => c.k === 'brain').map((c) => (c.flashT !== null ? Math.exp(-Math.pow((time - c.flashT - 0.3) / 0.42, 2)) * 0.7 : 0)));
+    zapUpdate(dt);
+    uniforms.uHotBrain.value = Math.max(hotK.brain, zapLevel * 0.6);
+    bodyU.uHot.value = Math.max(hotK.brain, zapLevel * 0.4, ...calls.filter((c) => c.k === 'brain').map((c) => (c.flashT !== null ? Math.exp(-Math.pow((time - c.flashT - 0.3) / 0.42, 2)) * 0.7 : 0)));
     uniforms.uHotA.value.set(hotK.o1, 0, hotK.o2, 0); uniforms.uHotB.value = hotK.o3;
     uniforms.uFocus.value = Math.max(hotK.o1, hotK.o2, hotK.o3);
 
@@ -1115,7 +1179,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const idle = reduced ? 0 : Math.sin(time * 0.23) * 0.06;
     flow.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
     if (portrait) flow.scale.set(cur.s, cur.s * side, cur.s); else flow.scale.set(cur.s * side, cur.s, cur.s);
-    flow.rotation.set(smy * 0.33 * tilt, smx * 0.72 * tilt + idle, cur.rot);
+    flow.rotation.set(smy * 0.5 * tilt, smx * 1.08 * tilt + idle, cur.rot);
     flow.updateMatrixWorld();
     uniforms.uFlowM.value.copy(flow.matrixWorld);
     uniforms.uBrainM.value.copy(brainG.matrixWorld);
@@ -1148,8 +1212,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uNetM.value.copy(netGroup.matrixWorld);
     netMat.opacity = pal.netOp * netFade * (1 - clamp01(morph * 1.6));
 
-    camera.position.x = smx * 0.9 * tilt;
-    camera.position.y = -smy * 0.48 * tilt;
+    camera.position.x = smx * 1.35 * tilt;
+    camera.position.y = -smy * 0.72 * tilt;
     camera.lookAt(0, 0, 0);
     uniforms.uCam.value.copy(camera.position);
     renderer.render(scene, camera);

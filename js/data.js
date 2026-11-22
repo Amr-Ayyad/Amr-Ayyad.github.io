@@ -102,7 +102,7 @@ export const CV = {
   education: {
     degree: { ar: 'بكالوريوس علم البيانات', en: 'B.Sc. in Data Science' },
     track: { ar: 'مسار الذكاء الاصطناعي', en: 'Artificial Intelligence track' },
-    school: { ar: 'الجامعة السعودية الإلكترونية', en: 'Saudi Electronic University' },
+    school: { ar: 'جامعة الأمير مساعد بن عبدالرحمن', en: 'Prince Musaid bin Abdulrahman University' },
     year: '2025',
   },
 

@@ -319,7 +319,11 @@ html[lang='en'] .title { letter-spacing: -.035em; }
 
 /* reveal */
 .rv { opacity: 0; transform: translate3d(0, 46px, 0) scale(.985); filter: blur(10px); transition: opacity .9s var(--out), transform 1.1s var(--out), filter .9s var(--out); transition-delay: calc(var(--i, 0) * 90ms); }
+/* revealed cards keep their own compositing layer: without it the blurred glass edge can flash a
+   thin line for a frame while the page scrolls over the moving hero */
 .rv.in { opacity: 1; transform: none; filter: none; }
+.glass.rv.in, .edu.rv.in, .home.rv.in { transform: translateZ(0); }
+.glass { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 body.instant .rv { transition: none !important; }
 
 /* ── Hero ── */
