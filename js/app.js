@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122153324';
-import { icon } from './icons.js?v=20261122153324';
+import { CV, UI } from './data.js?v=20261122153745';
+import { icon } from './icons.js?v=20261122153745';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -486,7 +486,7 @@ function onScroll() {
   const vh = innerHeight, y = scrollY;
   const k = Math.min(1, y / (vh * 0.85));
   // behind the content the hero fades to a backdrop; a light page needs a little more of it to show
-  canvas.style.opacity = String(1 - (doc.dataset.theme === 'light' ? 0.68 : 0.84) * k);
+  canvas.style.opacity = String(1 - (doc.dataset.theme === 'light' ? 0.5 : 0.84) * k);
   scene?.setScroll(k);
   body.classList.toggle('scrolled', y > 40);
   body.classList.toggle('rail-on', y > vh * 0.25);
@@ -526,7 +526,7 @@ onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js?v=20261122153324')
+import('./scene.js?v=20261122153745')
   .then((m) => {
     scene = m.createScene({
       canvas,

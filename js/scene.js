@@ -366,7 +366,7 @@ void main(){
     gl_FragColor = glow(col * uAlpha);
   } else {
     // on a light page the glass needs firmer lines and a deeper body to hold its shape
-    float a = (0.1 + 0.22 * fres) * ao * key + ln * (0.34 + 0.3 * fres) * ao + mj * 0.22 + fres * 0.32 + sb * (0.06 + 0.34 * ln) + edge * 0.7
+    float a = (0.17 + 0.3 * fres) * ao * key + ln * (0.6 + 0.3 * fres) * ao + mj * 0.36 + fres * 0.46 + sb * (0.08 + 0.4 * ln) + edge * 0.7
       + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zap * 0.9;
     vec3 lc = mix(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), uEdge, clamp(zap, 0.0, 1.0));
     gl_FragColor = vec4(lc, clamp(a, 0.0, 0.95) * uAlpha);
@@ -382,7 +382,7 @@ void main(){
   if (vD > uReveal) discard;
   float g = pow(abs(dot(normalize(vN), normalize(vV))), 2.6);
   if (uLight < 0.5) gl_FragColor = glow(uRim * g * 0.42 * uAlpha);
-  else gl_FragColor = vec4(uRim, g * 0.16 * uAlpha);
+  else gl_FragColor = vec4(uRim, g * 0.3 * uAlpha);
 }`;
 // fibre tracts: they light up along the flow and impulses travel the same way as the data
 const N_VERT = /* glsl */ `
@@ -496,8 +496,8 @@ const PALETTE = {
   light: {
     c1: '#0369a1', c2: '#0e7490', c3: '#0891b2', net: '#0284c7', raw: '#64748b', core: '#0e7490',
     rays: ['#0e7490', '#0891b2', '#0284c7', '#0369a1', '#075985'],
-    fill: '#0891b2', line: '#0c6a8a', rim: '#075985', edge: '#0284c7', halo: '#06b6d4',
-    nerve: '#0369a1', pulse: '#0891b2', tA: '#0d7a74', tB: '#0559a0',
+    fill: '#0891b2', line: '#08597a', rim: '#064a73', edge: '#0284c7', halo: '#0891b2',
+    nerve: '#035a8f', pulse: '#0891b2', tA: '#0a6863', tB: '#04468a',
     sharp: 0.85, size: 2.7, netOp: 0.17,
   },
 };
