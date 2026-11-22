@@ -124,11 +124,12 @@ export const CV = {
 
   // البطاقات التي تظهر حول الإنسان ثلاثي الأبعاد في الواجهة
   callouts: {
-    brain: { t: { ar: 'ذكاء اصطناعي', en: 'Artificial Intelligence' }, s: { ar: 'تعلم الآلة\u00a0· التحليل', en: 'Machine learning\u00a0· Analysis' } },
-    rhand: { t: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' }, s: { ar: 'لوحات مؤشرات تفاعلية', en: 'Interactive dashboards' } },
-    lhand: { t: { ar: 'Excel متقدم', en: 'Advanced Excel' }, s: { ar: 'تنظيف البيانات وتحليلها', en: 'Data cleaning & analysis' } },
-    heart: { t: { ar: 'تواصل وعمل جماعي', en: 'Communication & teamwork' }, s: { ar: 'مهارات شخصية', en: 'Soft skills' } },
-    base: { t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'بيانات حلّلتها', en: 'analyzed' } },
+    // each label is also a link: "to" is the section it opens
+    brain: { to: 'learn', t: { ar: 'ذكاء اصطناعي', en: 'Artificial Intelligence' }, s: { ar: 'دراستي وشهاداتي', en: 'Studies & certificates' } },
+    rhand: { to: 'work', t: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' }, s: { ar: 'لوحات مؤشرات صمّمتها', en: 'Dashboards I built' } },
+    lhand: { to: 'tools', t: { ar: 'Excel متقدم', en: 'Advanced Excel' }, s: { ar: 'أدواتي اليومية', en: 'My everyday toolkit' } },
+    heart: { to: 'about', t: { ar: 'شغف وعمل جماعي', en: 'Passion & teamwork' }, s: { ar: 'نبذة عني', en: 'About me' } },
+    base: { to: 'numbers', t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'بيانات حلّلتها', en: 'analyzed' } },
   },
 };
 

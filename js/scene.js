@@ -659,10 +659,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
 
   // ── callouts (DOM) ──
   const CALLS = [
-    { k: 'brain', at: [0.014, 1.62, 0.0], side: 'outer', dy: -46, m: true },
-    { k: 'heart', at: [0.08, 0.88, 0.2], side: 'inner', dy: -34, m: false },
-    { k: 'rhand', at: [0.5, -0.22, 0.08], side: '+x', dy: 36, m: true },
-    { k: 'lhand', at: [-0.47, -0.25, 0.02], side: '-x', dy: 36, m: true },
+    { k: 'brain', at: [0.0, 1.62, 0.0], side: 'outer', dy: -46, m: true },
+    { k: 'heart', at: [0.085, 0.88, 0.25], side: 'inner', dy: -34, m: false },
+    { k: 'rhand', at: [0.545, -0.2, 0.07], side: '+x', dy: 36, m: true },
+    { k: 'lhand', at: [-0.545, -0.2, 0.05], side: '-x', dy: 36, m: true },
     { k: 'base', at: [0, -1.75, 0.88], side: 'inner', dy: 18, m: true },
   ];
   const NS = 'http://www.w3.org/2000/svg';
@@ -682,15 +682,23 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     g.setAttribute('class', 'co-g');
     g.append(path, ring, pt);
     svg.appendChild(g);
-    const el = document.createElement('div');
+    // each label is a link to its section; hovering it lights up its leader line
+    const el = document.createElement('a');
     el.className = 'co';
+    el.tabIndex = -1;
+    el.setAttribute('aria-hidden', 'true');
+    el.addEventListener('pointerenter', () => g.classList.add('hot'));
+    el.addEventListener('pointerleave', () => g.classList.remove('hot'));
+    el.addEventListener('focus', () => g.classList.add('hot'));
+    el.addEventListener('blur', () => g.classList.remove('hot'));
     calloutsEl.appendChild(el);
     return { ...c, path, ring, pt, g, el, w: 0, h: 0, shown: false };
   });
   function setLabels(map) {
     for (const c of calls) {
       const L = map[c.k];
-      c.el.innerHTML = L ? `<b>${L.t}</b><small>${L.s}</small>` : '';
+      c.el.innerHTML = L ? `<b>${L.t}<i class="co-go" aria-hidden="true"></i></b><small>${L.s}</small>` : '';
+      if (L && L.to) c.el.setAttribute('href', '#' + L.to); else c.el.removeAttribute('href');
     }
     measure();
   }
@@ -779,6 +787,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   function updateCallouts() {
     const vis = scrollK < 0.35;
     calloutsEl.style.opacity = vis ? String(1 - scrollK / 0.35) : '0';
+    // fading labels stop taking clicks and focus before they disappear
+    calloutsEl.classList.toggle('off', scrollK > 0.22);
     if (!vis) return;
     humGroup.updateMatrixWorld();
     v3.set(0, 0, 0).applyMatrix4(humGroup.matrixWorld).project(camera);
@@ -791,7 +801,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     calls.forEach((c, i) => {
       const allowed = (!portrait || c.m) && !!body;
       const want = allowed && T >= T_READY - 0.25 + i * 0.16 && c.el.innerHTML;
-      if (want !== c.shown) { c.shown = want; c.el.classList.toggle('show', !!want); c.g.classList.toggle('show', !!want); }
+      if (want !== c.shown) {
+        c.shown = want; c.el.classList.toggle('show', !!want); c.g.classList.toggle('show', !!want);
+        c.el.tabIndex = want ? 0 : -1; c.el.setAttribute('aria-hidden', want ? 'false' : 'true');
+      }
       if (!want) return;
       v3.set(c.at[0], c.at[1], c.at[2]).applyMatrix4(humGroup.matrixWorld).project(camera);
       const sx = (v3.x * 0.5 + 0.5) * W, sy = (-v3.y * 0.5 + 0.5) * H;

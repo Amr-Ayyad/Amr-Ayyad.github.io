@@ -319,7 +319,7 @@ function setTheme(t) {
 }
 function calloutLabels() {
   const m = {};
-  for (const [k, v] of Object.entries(CV.callouts)) m[k] = { t: bidi(tr(v.t)), s: esc(tr(v.s)) };
+  for (const [k, v] of Object.entries(CV.callouts)) m[k] = { t: bidi(tr(v.t)), s: esc(tr(v.s)), to: v.to };
   return m;
 }
 function setLang(l) {
