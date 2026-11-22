@@ -365,7 +365,8 @@ void main(){
       + (vec3(0.85, 0.98, 1.0) * 1.25 + uEdge * 0.5) * zap;
     gl_FragColor = glow(col * uAlpha);
   } else {
-    float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.26 * ln) + edge * 0.7
+    // on a light page the glass needs firmer lines and a deeper body to hold its shape
+    float a = (0.1 + 0.22 * fres) * ao * key + ln * (0.34 + 0.3 * fres) * ao + mj * 0.22 + fres * 0.32 + sb * (0.06 + 0.34 * ln) + edge * 0.7
       + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zap * 0.9;
     vec3 lc = mix(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), uEdge, clamp(zap, 0.0, 1.0));
     gl_FragColor = vec4(lc, clamp(a, 0.0, 0.95) * uAlpha);
@@ -413,7 +414,7 @@ void main(){
   pulse = max(pulse, zp);
   float k = clamp(pulse * 1.1 + tip + uZap * 0.4 * zf, 0.0, 1.0);
   if (uLight < 0.5) gl_FragColor = glow(mix(uCol, uPulse, k) * (0.36 + pulse * 1.2 + tip * 1.4 + uZap * 0.5 * zf) * uAlpha);
-  else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.28 + pulse * 0.6 + tip + uZap * 0.35 * zf, 0.0, 1.0) * uAlpha);
+  else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.45 + pulse * 0.55 + tip + uZap * 0.35 * zf, 0.0, 1.0) * uAlpha);
 }`;
 // beams and pathways: thin lines and soft light ribbons that grow along their length
 const HOT = /* glsl */ `
@@ -495,8 +496,8 @@ const PALETTE = {
   light: {
     c1: '#0369a1', c2: '#0e7490', c3: '#0891b2', net: '#0284c7', raw: '#64748b', core: '#0e7490',
     rays: ['#0e7490', '#0891b2', '#0284c7', '#0369a1', '#075985'],
-    fill: '#0891b2', line: '#0e7490', rim: '#0369a1', edge: '#0284c7', halo: '#06b6d4',
-    nerve: '#0284c7', pulse: '#06b6d4', tA: '#0f766e', tB: '#0369a1',
+    fill: '#0891b2', line: '#0c6a8a', rim: '#075985', edge: '#0284c7', halo: '#06b6d4',
+    nerve: '#0369a1', pulse: '#0891b2', tA: '#0d7a74', tB: '#0559a0',
     sharp: 0.85, size: 2.7, netOp: 0.17,
   },
 };
@@ -1015,7 +1016,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     if (zapAsk && hitMesh && T >= T_FORMED && scrollK < 0.3) {
       const e = zapAsk; zapAsk = null;
       // over a label or a button the brain stays calm
-      const over = e.target && e.target.closest && e.target.closest('a, button, .hero-text');
+      const over = e.target && e.target.closest && e.target.closest('a, button');
       ndc.set((e.clientX / W) * 2 - 1, -(e.clientY / H) * 2 + 1);
       ray.setFromCamera(ndc, camera);
       const hit = over ? null : ray.intersectObject(hitMesh, false)[0];

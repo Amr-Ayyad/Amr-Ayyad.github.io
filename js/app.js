@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js';
-import { icon } from './icons.js';
+import { CV, UI } from './data.js?v=20261122153324';
+import { icon } from './icons.js?v=20261122153324';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -292,6 +292,7 @@ addEventListener('keydown', (e) => {
     st.setProperty('--la', `${((Math.atan2(x, -y) * 180) / Math.PI).toFixed(1)}deg`);
     st.setProperty('--gx', `${(32 + x * 24).toFixed(1)}%`);
     st.setProperty('--gy', `${(8 + y * 10).toFixed(1)}%`);
+    st.setProperty('--lx', x.toFixed(3)); st.setProperty('--ly', y.toFixed(3));
     raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.003 ? requestAnimationFrame(step) : (last = 0);
   };
   const go = () => { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } };
@@ -484,7 +485,8 @@ let ticking = false;
 function onScroll() {
   const vh = innerHeight, y = scrollY;
   const k = Math.min(1, y / (vh * 0.85));
-  canvas.style.opacity = String(1 - 0.84 * k);
+  // behind the content the hero fades to a backdrop; a light page needs a little more of it to show
+  canvas.style.opacity = String(1 - (doc.dataset.theme === 'light' ? 0.68 : 0.84) * k);
   scene?.setScroll(k);
   body.classList.toggle('scrolled', y > 40);
   body.classList.toggle('rail-on', y > vh * 0.25);
@@ -524,7 +526,7 @@ onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js')
+import('./scene.js?v=20261122153324')
   .then((m) => {
     scene = m.createScene({
       canvas,
