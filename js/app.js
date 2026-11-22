@@ -199,16 +199,25 @@ const islandInner = island.querySelector('.island-inner');
 const menu = $('#islandMenu');
 let iState = 'intro', iTimer = 0, swapTimer = 0, curSec = 'home', iKey = '';
 
+const narrowBar = matchMedia('(max-width: 340px)');
 function maxIslandWidth() {
   const bar = $('.statusbar');
   const ctl = $('.controls');
   const cs = getComputedStyle(bar);
   const inner = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  return Math.max(118, inner - 2 * (ctl.offsetWidth + 12));
+  // very narrow screens: the island takes the space beside the switches (see the CSS)
+  if (narrowBar.matches) return Math.max(118, inner - ctl.offsetWidth - 2 * (parseFloat(cs.columnGap) || 0) - 8);
+  return Math.max(118, inner - 2 * (ctl.offsetWidth + 8));
 }
 function fitIsland() {
-  const w = Math.min(maxIslandWidth(), Math.ceil(islandInner.scrollWidth) + 2);
-  island.style.width = Math.max(118, w) + 'px';
+  // on narrow phones the island stays centred between the switches, so when the text
+  // does not fit it first tightens its padding, then drops the icon, instead of crowding the edge
+  const max = maxIslandWidth();
+  const need = () => Math.ceil(islandInner.scrollWidth) + 2;
+  island.classList.remove('tight', 'bare');
+  if (need() > max) island.classList.add('tight');
+  if (need() > max) island.classList.add('bare');
+  island.style.width = Math.max(118, Math.min(max, need())) + 'px';
 }
 function islandSet(key, ico, html) {
   if (key === iKey) return;
