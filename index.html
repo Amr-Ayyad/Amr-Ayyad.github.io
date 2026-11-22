@@ -8,6 +8,7 @@
 <meta name="author" content="عمرو هيثم أبو عياد">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark light">
+<meta http-equiv="Cache-Control" content="no-cache">
 <link rel="canonical" href="https://amr-ayyad.github.io/">
 <meta property="og:type" content="profile">
 <meta property="og:url" content="https://amr-ayyad.github.io/">
@@ -26,8 +27,8 @@
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="modulepreload" href="js/scene.js?v=20261122164019">
-<link rel="stylesheet" href="css/style.css?v=20261122164019">
+<link rel="modulepreload" href="js/scene.js?v=20261122191121">
+<link rel="stylesheet" href="css/style.css?v=20261122191121">
 <script>
   (function () {
     var d = document.documentElement, t, l;
@@ -35,9 +36,22 @@
     d.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
     if (t === 'light') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f5f7');
     if (l === 'en') { d.lang = 'en'; d.dir = 'ltr'; }
+    // a reload always opens at the top, so the intro plays calmly from its start
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    // never show a stale copy: if a newer version is live than this page, load it once, past every cache
+    var v = '20261122191121', q = /[?&]v=\d+/.test(location.search);
+    if (q) history.replaceState(null, '', location.pathname + location.hash);
+    try {
+      fetch('version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.v > v && sessionStorage.getItem('fresh') !== j.v) {
+          sessionStorage.setItem('fresh', j.v);
+          location.replace(location.pathname + '?v=' + j.v + location.hash);
+        }
+      }).catch(function () {});
+    } catch (e) {}
   })();
 </script>
-<script type="module" src="js/app.js?v=20261122164019"></script>
+<script type="module" src="js/app.js?v=20261122191121"></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Person","name":"Amr Haitham Abu Ayyad","alternateName":"عمرو هيثم أبو عياد","jobTitle":"Data Analyst","url":"https://amr-ayyad.github.io/","email":"mailto:amrooabuayyad@gmail.com","image":"https://amr-ayyad.github.io/assets/og.jpg","knowsLanguage":["ar","en"],"knowsAbout":["Data analysis","Power BI","Metabase","Excel","Dashboards","Data visualization","Machine learning"]}
 </script>

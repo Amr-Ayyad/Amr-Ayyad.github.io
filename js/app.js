@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122164019';
-import { icon } from './icons.js?v=20261122164019';
+import { CV, UI } from './data.js?v=20261122191121';
+import { icon } from './icons.js?v=20261122191121';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -273,6 +273,16 @@ island.addEventListener('click', (e) => {
   toggleMenu();
 });
 document.addEventListener('click', (e) => { if (!menu.contains(e.target)) toggleMenu(false); });
+// links within the page glide to their section without writing #section into the address,
+// so a reload opens at the top with the intro
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="#"]');
+  if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  const el = document.getElementById(a.getAttribute('href').slice(1));
+  if (!el) return;
+  e.preventDefault();
+  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+});
 menu.addEventListener('click', (e) => { if (e.target.closest('a')) toggleMenu(false); });
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') toggleMenu(false);
@@ -527,7 +537,7 @@ onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js?v=20261122164019')
+import('./scene.js?v=20261122191121')
   .then((m) => {
     scene = m.createScene({
       canvas,
@@ -543,8 +553,8 @@ import('./scene.js?v=20261122164019')
       },
     });
     if (!scene) { body.classList.add('no-webgl'); onReady(); return; }
-    // a reload can land mid-page (the browser restores the reading position): the scene must know at once,
-    // so the hero labels stay hidden and the intro is skipped
+    // a link to a section opens mid-page: no intro there, the hero is simply in its final state behind
+    if (scrollY > 30) scene.finish();
     onScroll();
     const dbg = /^#t=([\d.]+)$/.exec(location.hash);
     if (dbg) scene.freeze(parseFloat(dbg[1]));

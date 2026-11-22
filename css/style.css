@@ -113,16 +113,35 @@ bdi { unicode-bidi: isolate; }
 @keyframes spin { to { --ang: 360deg; } }
 
 /* ── Glass ── */
+/* Thick Liquid Glass panels, like an iPhone folder: the body is frosted, the edge reads as a rounded
+   bevel of glass. Light gathers in a band just inside the edge (brighter at the top, a cool refracted
+   glow at the bottom), and a bright rim catches the light on the side facing it and again on the far
+   corner, with a faint cool and warm dispersion between. The rim turns with --la, which follows the
+   mouse (app.js), so the edges glint as the pointer moves. */
 .glass {
   position: relative; isolation: isolate;
-  background: var(--glass);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 36%, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, .04)), var(--glass);
   -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--stroke);
-  box-shadow: var(--shadow), inset 0 1px 0 var(--hi), inset 0 -1px 0 rgba(255, 255, 255, .03);
+  box-shadow: var(--shadow),
+    inset 0 1px 0 var(--hi),
+    inset 0 4px 2px -3px rgba(255, 255, 255, .3),
+    inset 0 16px 24px -16px rgba(255, 255, 255, .3),
+    inset 0 -16px 26px -16px rgba(130, 225, 255, .24),
+    inset 16px 0 24px -18px rgba(255, 255, 255, .15),
+    inset -16px 0 24px -18px rgba(255, 255, 255, .1),
+    inset 0 -4px 2px -3px rgba(170, 235, 255, .22),
+    inset 0 -1px 0 rgba(255, 255, 255, .1);
 }
+/* the rim */
 .glass::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: linear-gradient(150deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, .05));
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; z-index: 1; padding: 1.6px;
+  background: conic-gradient(from var(--la, 315deg),
+    rgba(255, 255, 255, .85), rgba(185, 240, 255, .5) 7%, rgba(255, 255, 255, .07) 20%, rgba(255, 238, 200, .16) 36%,
+    rgba(255, 255, 255, .5) 50%, rgba(160, 232, 255, .3) 57%, rgba(255, 255, 255, .06) 72%, rgba(255, 255, 255, .45) 92%, rgba(255, 255, 255, .85));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: .95;
 }
 .glass::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
@@ -130,7 +149,22 @@ bdi { unicode-bidi: isolate; }
   opacity: 0; transition: opacity .5s;
 }
 .glass:hover::after { opacity: 1; }
-:root[data-theme='light'] .glass::before { background: linear-gradient(150deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, 0) 42%); }
+:root[data-theme='light'] .glass {
+  background: linear-gradient(150deg, rgba(255, 255, 255, .75), rgba(255, 255, 255, 0) 42%), var(--glass);
+  box-shadow: var(--shadow),
+    inset 0 1px 0 var(--hi),
+    inset 0 14px 22px -16px rgba(255, 255, 255, .95),
+    inset 0 -14px 24px -16px rgba(14, 116, 144, .1),
+    inset 14px 0 22px -18px rgba(255, 255, 255, .7),
+    inset -14px 0 22px -18px rgba(255, 255, 255, .5),
+    inset 0 -1px 0 rgba(0, 0, 0, .03);
+}
+:root[data-theme='light'] .glass::before {
+  background: conic-gradient(from var(--la, 315deg),
+    #fff, rgba(255, 255, 255, .9) 8%, rgba(150, 200, 220, .25) 22%, rgba(14, 116, 144, .12) 36%,
+    rgba(255, 255, 255, .85) 50%, rgba(120, 200, 230, .3) 58%, rgba(14, 116, 144, .1) 74%, rgba(255, 255, 255, .8) 92%, #fff);
+  opacity: 1;
+}
 :root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(255, 255, 255, .8), transparent 46%); }
 
 /* ── Status bar · Dynamic Island · switches ── */

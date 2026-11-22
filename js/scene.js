@@ -1263,6 +1263,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
 
   return {
     skip() { if (T < T_END) speed = 6; },
+    // straight to the final picture (the page opened somewhere below the hero)
+    finish() { if (T < T_END && freezeT === null) T = T_END; },
     setTheme(th) { setTheme(th); uniforms.uSize.value = pal.size * dpr; },
     setLang(l, map) { side = l === 'ar' ? -1 : 1; layout(); setLabels(map); layout(); },
     setScroll(k) { scrollK = k; },
