@@ -42,7 +42,7 @@ export const CV = {
       },
     },
     {
-      icon: 'trophy', grad: ['#ff7b93', '#8e1f3b'],
+      icon: 'trophy', grad: ['#7ef0ff', '#0b86ad'],
       title: { ar: 'محلل بيانات', en: 'Data Analyst' },
       org: { ar: 'جائزة وزارة النقل', en: 'Ministry of Transport Award' },
       period: '2025',
@@ -83,10 +83,10 @@ export const CV = {
 
   // الأدوات تظهر كأيقونات تطبيقات — dock = الشريط السفلي
   tools: [
-    { icon: 'pie', grad: ['#ff9bb0', '#c2304f'], label: { ar: 'تصوير البيانات', en: 'Data Viz' } },
+    { icon: 'pie', grad: ['#8be9fb', '#1597c9'], label: { ar: 'تصوير البيانات', en: 'Data Viz' } },
     { icon: 'gauge', grad: ['#9be7ff', '#2b8fd6'], label: { ar: 'مؤشرات KPIs', en: 'KPIs' } },
-    { icon: 'curve', grad: ['#ffb38a', '#e0533d'], label: { ar: 'الإحصاء الوصفي', en: 'Statistics' } },
-    { icon: 'neural', grad: ['#c7a6ff', '#6b3fd1'], label: { ar: 'تعلم الآلة', en: 'Machine Learning' } },
+    { icon: 'curve', grad: ['#ffc46b', '#ee8a12'], label: { ar: 'الإحصاء الوصفي', en: 'Statistics' } },
+    { icon: 'neural', grad: ['#6ff0de', '#0f8f86'], label: { ar: 'تعلم الآلة', en: 'Machine Learning' } },
     { icon: 'chat', grad: ['#7be3a4', '#1f9d55'], label: { ar: 'التواصل', en: 'Communication' } },
     { icon: 'bulb', grad: ['#ffe17a', '#f0a018'], label: { ar: 'حل المشكلات', en: 'Problem Solving' } },
     { icon: 'team', grad: ['#8fd3ff', '#2563c9'], label: { ar: 'العمل الجماعي', en: 'Teamwork' } },
@@ -115,9 +115,9 @@ export const CV = {
     { icon: 'bars', grad: ['#ffd84d', '#f29b0c'], title: { ar: 'محترف Power BI', en: 'Power BI Professional' } },
     { icon: 'dash', grad: ['#8cc8ff', '#3474e0'], title: { ar: 'محترف Metabase', en: 'Metabase Professional' } },
     { icon: 'table', grad: ['#5fdc8f', '#178a4c'], title: { ar: 'تحليل البيانات باستخدام Excel', en: 'Data Analysis with Excel' } },
-    { icon: 'neural', grad: ['#c7a6ff', '#6b3fd1'], title: { ar: 'علم البيانات وتعلم الآلة', en: 'Data Science & Machine Learning' } },
-    { icon: 'curve', grad: ['#ffb38a', '#e0533d'], title: { ar: 'مقدمة في تحليل البيانات والإحصاء الوصفي', en: 'Intro to Data Analysis & Descriptive Statistics' } },
-    { icon: 'spark', grad: ['#ff9bb0', '#c2304f'], title: { ar: 'مقدمة في الذكاء الاصطناعي', en: 'Intro to Artificial Intelligence' } },
+    { icon: 'neural', grad: ['#6ff0de', '#0f8f86'], title: { ar: 'علم البيانات وتعلم الآلة', en: 'Data Science & Machine Learning' } },
+    { icon: 'curve', grad: ['#ffc46b', '#ee8a12'], title: { ar: 'مقدمة في تحليل البيانات والإحصاء الوصفي', en: 'Intro to Data Analysis & Descriptive Statistics' } },
+    { icon: 'spark', grad: ['#a5f3fc', '#0891b2'], title: { ar: 'مقدمة في الذكاء الاصطناعي', en: 'Intro to Artificial Intelligence' } },
     { icon: 'shield', grad: ['#9be7ff', '#2b8fd6'], title: { ar: 'مقدمة في حوكمة الشركات', en: 'Intro to Corporate Governance' } },
     { icon: 'sigma', grad: ['#c9ced6', '#6b7280'], title: { ar: 'التحليل الإحصائي باستخدام SPSS', en: 'Statistical Analysis with SPSS' }, note: { ar: 'قيد الدراسة', en: 'In progress' } },
   ],

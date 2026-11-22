@@ -113,7 +113,7 @@ function renderLearn() {
       <ul>${CV.languages.map((l) => `<li><b>${esc(tr(l.name))}</b>${tr(l.level) ? `<span>${esc(tr(l.level))}</span>` : ''}</li>`).join('')}</ul>
     </article>
     <article class="certs glass rv" style="--i:2">
-      <div class="card-h">${sq('seal', ['#ff9bb0', '#c2304f'], 'sm')}<h3>${esc(u('certs'))}</h3></div>
+      <div class="card-h">${sq('seal', ['#7ef0ff', '#0b86ad'], 'sm')}<h3>${esc(u('certs'))}</h3></div>
       <ul class="certs-list">${CV.certs.map((c) => `<li class="row">${sq(c.icon, c.grad, 'xs')}<b>${esc(tr(c.title))}</b>${c.note ? `<small>${esc(tr(c.note))}</small>` : ''}</li>`).join('')}</ul>
     </article>`;
 }

@@ -1,6 +1,9 @@
 // ─────────────────────────────────────────────────────────────
-//  Intro scene: a digital neural network that reassembles into a
-//  3D infographic human (particles + plexus + HUD + callouts).
+//  Intro scene: a digital neural network whose signals fly together
+//  into a holographic human: a sculpted body traced by light contours,
+//  a nervous system that lights up from the brain, a beating heart,
+//  a data platform, and DOM callouts.
+//  The body mesh is baked offline (tools/body) into assets/body.bin.
 // ─────────────────────────────────────────────────────────────
 import * as THREE from '../assets/three.module.min.js';
 
@@ -10,192 +13,74 @@ const FOV = 35;
 const CAM_Z = 6.8;
 const T_MORPH = 2.3;     // network → human starts
 const D_MORPH = 2.8;     // morph duration
-const T_FORMED = 4.9;    // plexus/HUD fade in
+const T_FORMED = 4.9;    // HUD / platform fade in
 const T_READY = 5.45;    // hero text reveal
 const T_END = 6.2;
-
-// ── Body model: smooth union of ellipsoids / tapered capsules ──
-// t: E ellipsoid [cx,cy,cz,rx,ry,rz] · S sphere [cx,cy,cz,r] · C capsule [ax,ay,az,bx,by,bz,r1,r2]
-// s: mirrored on x · k: blend radius · w: sampling weight
-const BODY = [
-  { t: 'E', s: 0, k: 0.05, w: 1.3, c: [0, 1.5, 0, 0.152, 0.2, 0.178] },            // cranium
-  { t: 'E', s: 0, k: 0.045, w: 1.3, c: [0, 1.405, 0.035, 0.108, 0.105, 0.118] },   // jaw
-  { t: 'E', s: 0, k: 0.02, w: 1.6, c: [0, 1.47, 0.168, 0.022, 0.048, 0.03] },      // nose
-  { t: 'E', s: 1, k: 0.02, w: 1.3, c: [0.152, 1.48, 0, 0.018, 0.048, 0.032] },     // ears
-  { t: 'C', s: 0, k: 0.04, w: 1, c: [0, 1.21, -0.01, 0, 1.4, 0, 0.068, 0.062] },   // neck
-  { t: 'C', s: 1, k: 0.08, w: 1, c: [0.02, 1.17, -0.02, 0.31, 1.115, -0.02, 0.085, 0.072] }, // trapezius
-  { t: 'E', s: 0, k: 0.1, w: 1, c: [0, 0.93, 0, 0.33, 0.29, 0.185] },              // chest
-  { t: 'E', s: 0, k: 0.1, w: 1, c: [0, 0.57, 0, 0.258, 0.3, 0.165] },              // abdomen
-  { t: 'E', s: 0, k: 0.08, w: 1, c: [0, 0.23, 0, 0.295, 0.21, 0.175] },            // pelvis
-  { t: 'S', s: 1, k: 0.06, w: 1, c: [0.355, 1.075, -0.015, 0.1] },                 // deltoids
-  { t: 'C', s: 1, k: 0.04, w: 1, c: [0.375, 1.04, -0.015, 0.49, 0.56, 0, 0.078, 0.058] },    // upper arms
-  { t: 'C', s: 1, k: 0.035, w: 1, c: [0.49, 0.56, 0, 0.565, 0.1, 0.05, 0.058, 0.042] },      // forearms
-  { t: 'C', s: 1, k: 0.03, w: 1.3, c: [0.57, 0.055, 0.055, 0.595, -0.135, 0.065, 0.046, 0.033] }, // hands
-  { t: 'C', s: 1, k: 0.06, w: 1, c: [0.15, 0.14, 0, 0.165, -0.74, 0.01, 0.135, 0.082] },     // thighs
-  { t: 'C', s: 1, k: 0.04, w: 1, c: [0.165, -0.74, 0.01, 0.175, -1.58, -0.03, 0.078, 0.048] }, // shins
-  { t: 'C', s: 1, k: 0.035, w: 1.2, c: [0.175, -1.655, -0.04, 0.19, -1.7, 0.17, 0.05, 0.042] }, // feet
-];
+const T_NERVE = 4.35;    // nervous system starts growing from the brain
+const D_NERVE = 2.2;
+const BODY_URL = new URL('../assets/body.bin', import.meta.url);
 
 const rnd = Math.random;
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const ease = (t) => t * t * (3 - 2 * t);
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
-function sdE(x, y, z, c) {
-  const X = x - c[0], Y = y - c[1], Z = z - c[2];
-  const k0 = Math.hypot(X / c[3], Y / c[4], Z / c[5]);
-  const k1 = Math.hypot(X / (c[3] * c[3]), Y / (c[4] * c[4]), Z / (c[5] * c[5]));
-  return k1 === 0 ? -Math.min(c[3], c[4], c[5]) : (k0 * (k0 - 1)) / k1;
+// ── body.bin ──
+function parseBody(buf) {
+  const dv = new DataView(buf);
+  if (dv.getUint32(0, true) !== 0x59444f42) throw new Error('bad body.bin');
+  const jl = dv.getUint32(8, true);
+  const meta = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, jl)));
+  const pad4 = (n) => (n + 3) & ~3;
+  let o = 12 + pad4(jl);
+  const { nv, ni, nSeg } = meta;
+  const q = new Int16Array(buf, o, nv * 3); o += pad4(nv * 6);
+  const nq = new Int8Array(buf, o, nv * 3); o += pad4(nv * 3);
+  const aoq = new Uint8Array(buf, o, nv); o += pad4(nv);
+  const index = meta.i16 ? new Uint16Array(buf, o, ni) : new Uint32Array(buf, o, ni); o += pad4(ni * (meta.i16 ? 2 : 4));
+  const nq3 = new Int16Array(buf, o, nSeg * 6); o += pad4(nSeg * 12);
+  const ndq = new Uint16Array(buf, o, nSeg * 2);
+  const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), ao = new Float32Array(nv);
+  for (let i = 0; i < nv * 3; i++) { pos[i] = q[i] * meta.posScale; nrm[i] = nq[i] / 127; }
+  for (let i = 0; i < nv; i++) ao[i] = aoq[i] / 255;
+  const npos = new Float32Array(nSeg * 6), nd = new Float32Array(nSeg * 2);
+  for (let i = 0; i < nSeg * 6; i++) npos[i] = nq3[i] * meta.posScale;
+  for (let i = 0; i < nSeg * 2; i++) nd[i] = (ndq[i] / 65535) * meta.maxD;
+  return { meta, pos, nrm, ao, index, npos, nd };
 }
-function sdC(x, y, z, c) {
-  const bx = c[3] - c[0], by = c[4] - c[1], bz = c[5] - c[2];
-  const px = x - c[0], py = y - c[1], pz = z - c[2];
-  let h = (px * bx + py * by + pz * bz) / (bx * bx + by * by + bz * bz);
-  h = h < 0 ? 0 : h > 1 ? 1 : h;
-  return Math.hypot(px - bx * h, py - by * h, pz - bz * h) - (c[6] + (c[7] - c[6]) * h);
-}
-function smin(a, b, k) {
-  const h = Math.max(k - Math.abs(a - b), 0) / k;
-  return Math.min(a, b) - h * h * k * 0.25;
-}
-function sdf(x, y, z) {
-  const ax = Math.abs(x);
-  let d = 0;
-  for (let i = 0; i < BODY.length; i++) {
-    const p = BODY[i], X = p.s ? ax : x, c = p.c;
-    const v = p.t === 'E' ? sdE(X, y, z, c) : p.t === 'S' ? Math.hypot(X - c[0], y - c[1], z - c[2]) - c[3] : sdC(X, y, z, c);
-    d = i === 0 ? v : smin(d, v, p.k);
+// area-weighted points on the mesh surface (with interpolated normals)
+function sampleSurface(B, n) {
+  const { pos, nrm, index } = B, nt = index.length / 3, cdf = new Float32Array(nt);
+  let acc = 0;
+  for (let t = 0; t < nt; t++) {
+    const a = index[t * 3] * 3, b = index[t * 3 + 1] * 3, c = index[t * 3 + 2] * 3;
+    const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2];
+    const vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+    acc += Math.sqrt(cx * cx + cy * cy + cz * cz);
+    cdf[t] = acc;
   }
-  return d;
+  const P = new Float32Array(n * 3), N = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const r = rnd() * acc;
+    let lo = 0, hi = nt - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (cdf[m] < r) lo = m + 1; else hi = m; }
+    const a = index[lo * 3] * 3, b = index[lo * 3 + 1] * 3, c = index[lo * 3 + 2] * 3;
+    let u = rnd(), v = rnd();
+    if (u + v > 1) { u = 1 - u; v = 1 - v; }
+    const w = 1 - u - v;
+    for (let k = 0; k < 3; k++) {
+      P[i * 3 + k] = pos[a + k] * w + pos[b + k] * u + pos[c + k] * v;
+      N[i * 3 + k] = nrm[a + k] * w + nrm[b + k] * u + nrm[c + k] * v;
+    }
+  }
+  return { P, N };
 }
 function randDir() {
   let x, y, z, l;
   do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; l = x * x + y * y + z * z; } while (l > 1 || l < 1e-4);
   l = Math.sqrt(l);
   return [x / l, y / l, z / l];
-}
-function areaOf(p) {
-  const c = p.c;
-  let a;
-  if (p.t === 'S') a = 4 * Math.PI * c[3] * c[3];
-  else if (p.t === 'E') {
-    const q = 1.6075, A = Math.pow(c[3], q), B = Math.pow(c[4], q), C = Math.pow(c[5], q);
-    a = 4 * Math.PI * Math.pow((A * B + A * C + B * C) / 3, 1 / q);
-  } else {
-    const L = Math.hypot(c[3] - c[0], c[4] - c[1], c[5] - c[2]);
-    a = Math.PI * (c[6] + c[7]) * L + 2 * Math.PI * (c[6] * c[6] + c[7] * c[7]);
-  }
-  return a * (p.s ? 2 : 1) * p.w;
-}
-function samplePrim(p) {
-  const c = p.c;
-  let x, y, z;
-  if (p.t === 'S') { const d = randDir(); x = c[0] + d[0] * c[3]; y = c[1] + d[1] * c[3]; z = c[2] + d[2] * c[3]; }
-  else if (p.t === 'E') { const d = randDir(); x = c[0] + d[0] * c[3]; y = c[1] + d[1] * c[4]; z = c[2] + d[2] * c[5]; }
-  else {
-    const [ax, ay, az, bx, by, bz, r1, r2] = c;
-    const L = Math.hypot(bx - ax, by - ay, bz - az);
-    const lat = Math.PI * (r1 + r2) * L, caps = 2 * Math.PI * (r1 * r1 + r2 * r2);
-    if (rnd() < lat / (lat + caps)) {
-      const rm = Math.max(r1, r2);
-      let t;
-      do { t = rnd(); } while (rnd() * rm > r1 + (r2 - r1) * t);
-      const r = r1 + (r2 - r1) * t;
-      const kx = (bx - ax) / L, ky = (by - ay) / L, kz = (bz - az) / L;
-      let ux, uy, uz;
-      if (Math.abs(ky) < 0.9) { ux = kz; uy = 0; uz = -kx; } else { ux = 0; uy = -kz; uz = ky; }
-      const ul = Math.hypot(ux, uy, uz); ux /= ul; uy /= ul; uz /= ul;
-      const vx = ky * uz - kz * uy, vy = kz * ux - kx * uz, vz = kx * uy - ky * ux;
-      const th = rnd() * Math.PI * 2, cs = Math.cos(th), sn = Math.sin(th);
-      x = ax + (bx - ax) * t + (ux * cs + vx * sn) * r;
-      y = ay + (by - ay) * t + (uy * cs + vy * sn) * r;
-      z = az + (bz - az) * t + (uz * cs + vz * sn) * r;
-    } else {
-      const end = rnd() < (r2 * r2) / (r1 * r1 + r2 * r2);
-      const d = randDir(), r = end ? r2 : r1;
-      x = (end ? bx : ax) + d[0] * r; y = (end ? by : ay) + d[1] * r; z = (end ? bz : az) + d[2] * r;
-    }
-  }
-  if (p.s && rnd() < 0.5) x = -x;
-  return [x, y, z];
-}
-function projectToSurface(x, y, z) {
-  for (let it = 0; it < 5; it++) {
-    const d = sdf(x, y, z);
-    if (Math.abs(d) < 0.0012) return [x, y, z, d];
-    const e = 0.0025;
-    const gx = sdf(x + e, y, z) - sdf(x - e, y, z);
-    const gy = sdf(x, y + e, z) - sdf(x, y - e, z);
-    const gz = sdf(x, y, z + e) - sdf(x, y, z - e);
-    const gl = Math.hypot(gx, gy, gz) || 1;
-    x -= (d * gx) / gl; y -= (d * gy) / gl; z -= (d * gz) / gl;
-  }
-  return [x, y, z, sdf(x, y, z)];
-}
-function genBody(nSurf, nBrain) {
-  const areas = BODY.map(areaOf);
-  const total = areas.reduce((a, b) => a + b, 0);
-  const cdf = [];
-  let acc = 0;
-  for (const a of areas) { acc += a / total; cdf.push(acc); }
-  const out = new Float32Array((nSurf + nBrain) * 3);
-  let n = 0, guard = 0;
-  while (n < nSurf && guard < nSurf * 40) {
-    guard++;
-    const r = rnd();
-    let i = 0;
-    while (i < cdf.length - 1 && r > cdf[i]) i++;
-    const p = samplePrim(BODY[i]);
-    if (sdf(p[0], p[1], p[2]) < -0.02) continue; // buried inside another part
-    const q = projectToSurface(p[0], p[1], p[2]);
-    if (Math.abs(q[3]) > 0.005) continue;
-    out[n * 3] = q[0]; out[n * 3 + 1] = q[1]; out[n * 3 + 2] = q[2];
-    n++;
-  }
-  for (; n < nSurf; n++) { const j = (rnd() * Math.max(1, n)) | 0; out[n * 3] = out[j * 3]; out[n * 3 + 1] = out[j * 3 + 1]; out[n * 3 + 2] = out[j * 3 + 2]; }
-  // a glowing "brain" cluster inside the head
-  for (let j = 0; j < nBrain; j++) {
-    let x, y, z;
-    do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; } while (x * x + y * y + z * z > 1);
-    const o = (nSurf + j) * 3;
-    out[o] = x * 0.1; out[o + 1] = 1.55 + y * 0.1; out[o + 2] = -0.015 + z * 0.115;
-  }
-  return out;
-}
-function plexus(pos, count, maxD, k) {
-  const inv = 1 / maxD, map = new Map(), cellOf = new Int32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const a = Math.floor(pos[i * 3] * inv), b = Math.floor(pos[i * 3 + 1] * inv), c = Math.floor(pos[i * 3 + 2] * inv);
-    cellOf[i * 3] = a; cellOf[i * 3 + 1] = b; cellOf[i * 3 + 2] = c;
-    const key = a + ',' + b + ',' + c;
-    let arr = map.get(key);
-    if (!arr) map.set(key, (arr = []));
-    arr.push(i);
-  }
-  const seen = new Set(), segs = [], m2 = maxD * maxD;
-  for (let i = 0; i < count; i++) {
-    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
-    const cand = [];
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-      const arr = map.get(cellOf[i * 3] + dx + ',' + (cellOf[i * 3 + 1] + dy) + ',' + (cellOf[i * 3 + 2] + dz));
-      if (!arr) continue;
-      for (const j of arr) {
-        if (j === i) continue;
-        const d2 = (pos[j * 3] - x) ** 2 + (pos[j * 3 + 1] - y) ** 2 + (pos[j * 3 + 2] - z) ** 2;
-        if (d2 < m2 && d2 > 1e-6) cand.push(d2, j);
-      }
-    }
-    const order = [];
-    for (let m = 0; m < cand.length; m += 2) order.push([cand[m], cand[m + 1]]);
-    order.sort((a, b) => a[0] - b[0]);
-    for (let m = 0; m < Math.min(k, order.length); m++) {
-      const j = order[m][1], a = Math.min(i, j), b = Math.max(i, j), key = a * 100003 + b;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      segs.push(a, b);
-    }
-  }
-  return segs;
 }
 function genNetwork() {
   const layers = [4, 7, 9, 9, 7, 4], L = layers.length, nodes = [], starts = [];
@@ -214,24 +99,41 @@ function genNetwork() {
       for (let b = 0; b < layers[li + 1]; b++) edges.push([starts[li] + a, starts[li + 1] + b]);
   return { nodes, edges };
 }
-function ringPositions(r, seg, sx = 1, sz = 1, dashed = false) {
+// k-nearest links inside a small point set (the brain)
+function knnLinks(P, n, k) {
+  const segs = [], seen = new Set();
+  for (let i = 0; i < n; i++) {
+    const d = [];
+    for (let j = 0; j < n; j++) if (j !== i) d.push([(P[i * 3] - P[j * 3]) ** 2 + (P[i * 3 + 1] - P[j * 3 + 1]) ** 2 + (P[i * 3 + 2] - P[j * 3 + 2]) ** 2, j]);
+    d.sort((a, b) => a[0] - b[0]);
+    for (let m = 0; m < k; m++) {
+      const j = d[m][1], key = Math.min(i, j) * 4096 + Math.max(i, j);
+      if (seen.has(key)) continue;
+      seen.add(key); segs.push(i, j);
+    }
+  }
+  return segs;
+}
+function ringPositions(r, seg, dashed = false) {
   const a = [];
   for (let i = 0; i < seg; i++) {
     if (dashed && i % 2) continue;
     const t0 = (i / seg) * Math.PI * 2, t1 = ((i + 1) / seg) * Math.PI * 2;
-    a.push(Math.cos(t0) * r * sx, 0, Math.sin(t0) * r * sz, Math.cos(t1) * r * sx, 0, Math.sin(t1) * r * sz);
+    a.push(Math.cos(t0) * r, 0, Math.sin(t0) * r, Math.cos(t1) * r, 0, Math.sin(t1) * r);
   }
   return a;
 }
 
 // ── Shaders ──
-const VERT = /* glsl */ `
+// particles: network signals → points on the body surface
+const P_VERT = /* glsl */ `
 uniform float uTime, uMorph, uNetFade, uSize, uScan, uLight, uBodyFx;
 uniform mat4 uNetM, uHumM;
-uniform vec3 uC1, uC2, uC3;
+uniform vec3 uC1, uC2, uC3, uCam;
 attribute vec3 aA;
 attribute vec3 aB;
 attribute vec3 aH;
+attribute vec3 aN;
 attribute vec4 aI;
 varying vec3 vCol;
 varying float vA;
@@ -246,36 +148,248 @@ void main(){
   float e = p * p * (3.0 - 2.0 * p);
   vec3 sw = vec3(sin(r1 * 91.0 + r2 * 13.0), cos(r2 * 77.0 + r1 * 7.0), sin((r1 - r2) * 53.0));
   vec3 pos = mix(nw, hw, e) + sw * sin(e * 3.14159) * (0.3 + r2 * 0.45);
-  vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+  vec4 mv = viewMatrix * vec4(pos, 1.0);
   gl_Position = projectionMatrix * mv;
-  float sc = exp(-pow((aH.y - uScan) * 11.0, 2.0)) * e * 0.75;
-  float band = smoothstep(0.88, 1.0, sin(aH.y * 26.0 - uTime * 1.3) * 0.5 + 0.5) * uBodyFx;
-  float s = mix(mix(0.9, 2.3, aI.x), mix(1.0, 1.15, aI.y), e);
-  s *= (0.82 + 0.36 * sin(uTime * 1.7 + r1 * 60.0)) * (1.0 + sc * 1.1);
+  // facing ratio on the body (brain points have no normal)
+  vec3 wn = mat3(uHumM) * aN;
+  float wl = length(wn);
+  float facing = wl > 0.01 ? dot(wn / wl, normalize(uCam - hw)) : 1.0;
+  float fr = pow(1.0 - abs(facing), 2.0);
+  float back = facing < 0.0 ? 0.18 : 1.0;
+  float tw = 0.5 + 0.5 * sin(uTime * (1.3 + r2 * 2.6) + r1 * 60.0);
+  float sc = exp(-pow((aH.y - uScan) * 10.0, 2.0)) * e;
+  float s = mix(mix(0.95, 2.4, aI.x), mix(0.55 + fr * 0.5, 1.25, aI.y), e);
+  s *= (0.8 + 0.4 * tw) * (1.0 + sc * 0.9);
   gl_PointSize = uSize * s * (7.0 / -mv.z);
   vec3 cn = mix(mix(uC1, uC3, ft * 0.85), mix(uC2, uC3, 0.35), aI.x * 0.8);
-  float acc = max(aI.y, step(0.94, r2));
-  vec3 ch = mix(mix(uC1, uC2, r1 * 0.75), uC3, acc);
-  vec3 hi = mix(vec3(1.0), uC3, uLight);
-  vCol = mix(cn, ch, e) + (band * 0.3 + sc * 0.55) * hi * (1.0 - uLight * 0.6);
+  vec3 ch = mix(mix(uC1, uC2, fr), uC3, aI.y * 0.7);
+  vCol = mix(cn, ch, e) + sc * mix(vec3(0.9), uC3, uLight) * 0.6;
   float an = uNetFade * mix(0.5, 1.0, aI.x);
-  float ah = 0.58 + 0.25 * r2 + band * 0.45 + sc * 0.6 - aI.y * 0.12;
+  float ah = (0.06 + 0.42 * fr + 0.3 * tw * tw * tw + sc * mix(0.55, 0.3, uLight)) * back;
+  ah = mix(ah, 0.4 + 0.4 * tw, aI.y);
+  // while flying in, particles are bright; once the hologram is built they settle into a fine dust
+  ah = mix(0.85, ah, uBodyFx);
+  // on a light page the dust is ink, so keep it quieter once the body is built
+  ah *= 1.0 - 0.42 * uLight * uBodyFx * (1.0 - aI.y);
   vA = mix(an, ah, e);
 }`;
-const FRAG = /* glsl */ `
-uniform float uSharp, uAlpha;
+const P_FRAG = /* glsl */ `
+uniform float uSharp, uAlpha, uLight;
 varying vec3 vCol;
 varying float vA;
 void main(){
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
-  float a = pow(1.0 - d * 2.0, uSharp);
-  gl_FragColor = vec4(vCol, clamp(a * vA * uAlpha, 0.0, 1.0));
+  float a = clamp(pow(1.0 - d * 2.0, uSharp) * vA * uAlpha, 0.0, 1.0);
+  // dark: light is added onto the page (premultiplied, alpha 0); light: ink over it
+  gl_FragColor = uLight < 0.5 ? vec4(vCol * a, 0.0) : vec4(vCol, a);
+}`;
+
+// hologram body (shared vertex stage keeps the depth pre-pass bit-identical)
+const B_VERT = /* glsl */ `
+uniform float uInflate;
+attribute float aAO;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+varying float vAO;
+void main(){
+  vec4 mv = modelViewMatrix * vec4(position + normal * uInflate, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = -mv.xyz;
+  vP = position;
+  vAO = aAO;
+  gl_Position = projectionMatrix * mv;
+}`;
+const B_DEPTH = /* glsl */ `
+uniform float uReveal;
+varying vec3 vP;
+void main(){
+  if (vP.y > uReveal) discard;
+  gl_FragColor = vec4(0.0);
+}`;
+const B_FRAG = /* glsl */ `
+uniform float uTime, uReveal, uFx, uScan, uLight, uAlpha, uDensity;
+uniform vec3 uFill, uLine, uRim, uEdge;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+varying float vAO;
+float contour(float c){
+  float fw = fwidth(c);
+  float d = abs(fract(c - 0.5) - 0.5);
+  return (1.0 - smoothstep(fw * 0.05, fw * 0.95, d)) * clamp((0.5 - fw) * 3.0, 0.0, 1.0);
+}
+void main(){
+  float y = vP.y;
+  if (y > uReveal) discard;
+  vec3 n = normalize(vN);
+  vec3 v = normalize(vV);
+  float ndv = clamp(abs(dot(n, v)), 0.0, 1.0);
+  float fres = pow(1.0 - ndv, 2.4);
+  float ao = mix(0.42, 1.0, vAO);
+  float c = y * uDensity;
+  float ln = contour(c);
+  float mj = contour(c / 6.0);
+  float sb = exp(-pow((y - uScan) * 6.5, 2.0)) * uFx;
+  float edge = exp(-pow((uReveal - y) * 42.0, 2.0)) * step(uReveal, 1.82);
+  float key = 0.75 + 0.25 * clamp(dot(n, normalize(vec3(-0.35, 0.75, 0.55))), 0.0, 1.0);
+  if (uLight < 0.5) {
+    vec3 col = uFill * (0.06 + 0.3 * fres) * ao * key
+      + uLine * ln * (0.1 + 0.28 * fres + 0.08 * key) * ao
+      + uLine * mj * 0.12 * ao
+      + uRim * fres * 0.9
+      + uLine * sb * (0.06 + 0.6 * ln) + uEdge * sb * ln * 0.25
+      + (uLine * 0.8 + uEdge * 0.5) * edge;
+    gl_FragColor = vec4(col * uAlpha, 0.0);
+  } else {
+    float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.3 * ln) + edge * 0.7;
+    gl_FragColor = vec4(mix(uLine, uRim, fres), clamp(a, 0.0, 0.92) * uAlpha);
+  }
+}`;
+const H_FRAG = /* glsl */ `
+uniform float uReveal, uLight, uAlpha;
+uniform vec3 uRim;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vP;
+void main(){
+  if (vP.y > uReveal) discard;
+  float g = pow(abs(dot(normalize(vN), normalize(vV))), 2.6);
+  if (uLight < 0.5) gl_FragColor = vec4(uRim * g * 0.42 * uAlpha, 0.0);
+  else gl_FragColor = vec4(uRim, g * 0.16 * uAlpha);
+}`;
+// nervous system: grows from the brain, impulses travel outward
+const N_VERT = /* glsl */ `
+attribute float aD;
+varying float vD;
+void main(){
+  vD = aD;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const N_FRAG = /* glsl */ `
+uniform float uTime, uGrow, uAlpha, uLight;
+uniform vec3 uCol, uPulse;
+varying float vD;
+void main(){
+  if (vD > uGrow) discard;
+  float tip = exp(-pow((uGrow - vD) * 5.0, 2.0)) * step(uGrow, 4.9);
+  float ph = fract(vD * 0.75 - uTime * 0.42);
+  float pulse = smoothstep(0.8, 0.97, ph) * (1.0 - smoothstep(0.97, 1.0, ph));
+  float k = clamp(pulse * 1.1 + tip, 0.0, 1.0);
+  if (uLight < 0.5) gl_FragColor = vec4(mix(uCol, uPulse, k) * (0.42 + pulse * 1.25 + tip * 1.4) * uAlpha, 0.0);
+  else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.32 + pulse * 0.6 + tip, 0.0, 1.0) * uAlpha);
+}`;
+const SPRITE_VERT = /* glsl */ `
+uniform float uSize;
+attribute float aS;
+varying float vS;
+void main(){
+  vS = aS;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = uSize * aS * (7.0 / -mv.z);
+}`;
+// heart: core glow + expanding ring on every beat
+const HEART_FRAG = /* glsl */ `
+uniform vec3 uColor, uCore;
+uniform float uBeat, uPhase, uAlpha, uLight;
+void main(){
+  vec2 q = gl_PointCoord - 0.5;
+  float d = length(q) * 2.0;
+  if (d > 1.0) discard;
+  float core = exp(-d * d * (26.0 - uBeat * 12.0)) * (0.55 + 0.9 * uBeat);
+  float halo = exp(-d * d * 5.0) * (0.18 + 0.35 * uBeat);
+  float rr = 0.12 + uPhase * 0.85;
+  float ring = exp(-pow((d - rr) * 22.0, 2.0)) * (1.0 - uPhase) * 0.9;
+  vec3 c = uColor * (halo + ring) + uCore * core;
+  float a = clamp(core + halo + ring, 0.0, 1.0);
+  if (uLight < 0.5) gl_FragColor = vec4(c * uAlpha, 0.0);
+  else gl_FragColor = vec4(uColor, clamp(core * 0.9 + ring * 0.7 + halo * 0.25, 0.0, 1.0) * uAlpha);
+}`;
+const DOT_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity, uLight;
+void main(){
+  float d = length(gl_PointCoord - 0.5);
+  if (d > 0.5) discard;
+  float a = smoothstep(0.5, 0.08, d) * uOpacity;
+  gl_FragColor = uLight < 0.5 ? vec4(uColor * a, 0.0) : vec4(uColor, a);
+}`;
+// drifting light motes around the figure
+const DUST_VERT = /* glsl */ `
+uniform float uTime, uSize;
+attribute vec4 aR;
+varying float vA;
+void main(){
+  vec3 p = position;
+  p.y = mod(p.y + 1.85 + uTime * (0.035 + aR.x * 0.06), 3.9) - 1.85;
+  p.x += sin(uTime * 0.3 + aR.y * 6.28) * 0.06;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = uSize * (0.6 + aR.z) * (7.0 / -mv.z);
+  float edge = smoothstep(-1.85, -1.5, p.y) * (1.0 - smoothstep(1.5, 2.0, p.y));
+  vA = edge * (0.35 + 0.65 * (0.5 + 0.5 * sin(uTime * (0.8 + aR.w * 2.0) + aR.y * 40.0)));
+}`;
+const DUST_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity, uLight;
+varying float vA;
+void main(){
+  float d = length(gl_PointCoord - 0.5);
+  if (d > 0.5) discard;
+  float a = pow(1.0 - d * 2.0, 1.6) * vA * uOpacity;
+  gl_FragColor = uLight < 0.5 ? vec4(uColor * a, 0.0) : vec4(uColor, a);
+}`;
+// projector light column rising from the platform
+const BEAM_VERT = /* glsl */ `
+varying float vH;
+varying vec3 vN;
+varying vec3 vV;
+void main(){
+  vH = uv.y;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vN = normalize(normalMatrix * normal);
+  vV = -mv.xyz;
+  gl_Position = projectionMatrix * mv;
+}`;
+const BEAM_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity, uLight;
+varying float vH;
+varying vec3 vN;
+varying vec3 vV;
+void main(){
+  float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+  float a = pow(1.0 - vH, 2.2) * (0.25 + 0.75 * f * f) * uOpacity;
+  if (uLight < 0.5) gl_FragColor = vec4(uColor * a, 0.0);
+  else gl_FragColor = vec4(uColor, a * 0.6);
+}`;
+const GLOW_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uOpacity, uLight;
+varying vec2 vUv;
+void main(){
+  float d = length(vUv - 0.5) * 2.0;
+  float a = pow(clamp(1.0 - d, 0.0, 1.0), 2.4) * uOpacity;
+  gl_FragColor = uLight < 0.5 ? vec4(uColor * a, 0.0) : vec4(uColor, a);
 }`;
 
 const PALETTE = {
-  dark: { c1: '#8fc6ff', c2: '#eef3fa', c3: '#ff5a7a', net: '#8fc6ff', plex: '#9fcfff', hud: '#ff6f8c', hud2: '#8fc6ff', glow: '#ff3d63', sharp: 1.55, size: 2.5, netOp: 0.13, plexOp: 0.15, hudOp: 0.55, glowOp: 0.22 },
-  light: { c1: '#2b63c4', c2: '#2a3142', c3: '#a3173a', net: '#2b63c4', plex: '#2b63c4', hud: '#a3173a', hud2: '#2b63c4', glow: '#1d2840', sharp: 0.85, size: 2.7, netOp: 0.17, plexOp: 0.13, hudOp: 0.6, glowOp: 0.1 },
+  dark: {
+    c1: '#7dd3fc', c2: '#d9fbff', c3: '#22d3ee', net: '#38bdf8',
+    fill: '#0ea5e9', line: '#5ee3f7', rim: '#a5f3fc', edge: '#e6fdff', halo: '#38d6f0',
+    nerve: '#1fb8e0', pulse: '#e9feff', heart: '#5ee3f7', heartCore: '#ffffff',
+    hud: '#5ee3f7', hud2: '#7dd3fc', glow: '#0ea5e9', dust: '#a5f3fc',
+    sharp: 1.55, size: 2.5, netOp: 0.13, hudOp: 0.5, glowOp: 0.26, beamOp: 0.16, dustOp: 0.55,
+  },
+  light: {
+    c1: '#0369a1', c2: '#0e7490', c3: '#0891b2', net: '#0284c7',
+    fill: '#0891b2', line: '#0e7490', rim: '#0369a1', edge: '#0284c7', halo: '#06b6d4',
+    nerve: '#0284c7', pulse: '#06b6d4', heart: '#0891b2', heartCore: '#0e7490',
+    hud: '#0e7490', hud2: '#0369a1', glow: '#38bdf8', dust: '#0891b2',
+    sharp: 0.85, size: 2.7, netOp: 0.17, hudOp: 0.55, glowOp: 0.16, beamOp: 0.1, dustOp: 0.45,
+  },
 };
 
 export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, getReserve, onPhase }) {
@@ -290,18 +404,17 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
 
   const small = Math.min(innerWidth, innerHeight) < 700;
   const weak = (navigator.hardwareConcurrency || 8) <= 4;
-  const N = small || weak ? 3600 : 6400;
-  const NBRAIN = Math.round(N * 0.045), NSURF = N - NBRAIN;
-  const NPLEX = small || weak ? 850 : 1500;
+  const N = small || weak ? 3400 : 5600;
+  const NBRAIN = Math.round(N * 0.04), NSURF = N - NBRAIN;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 50);
   camera.position.set(0, 0, CAM_Z);
 
-  // ── data ──
-  const human = genBody(NSURF, NBRAIN);
+  // ── particles (network now, body surface later) ──
   const net = genNetwork();
   const aA = new Float32Array(N * 3), aB = new Float32Array(N * 3), aI = new Float32Array(N * 4);
+  const aH = new Float32Array(N * 3), aN = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     const isNode = rnd() < 0.24;
     if (isNode) {
@@ -319,116 +432,226 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     aI[i * 4 + 3] = rnd();
   }
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(human, 3));
-  geo.setAttribute('aH', new THREE.BufferAttribute(human, 3));
+  geo.setAttribute('position', new THREE.BufferAttribute(aH, 3));
+  geo.setAttribute('aH', new THREE.BufferAttribute(aH, 3));
+  geo.setAttribute('aN', new THREE.BufferAttribute(aN, 3));
   geo.setAttribute('aA', new THREE.BufferAttribute(aA, 3));
   geo.setAttribute('aB', new THREE.BufferAttribute(aB, 3));
   geo.setAttribute('aI', new THREE.BufferAttribute(aI, 4));
   const uniforms = {
     uTime: { value: 0 }, uMorph: { value: 0 }, uNetFade: { value: 0 }, uSize: { value: 2.5 }, uScan: { value: -3 },
     uLight: { value: 0 }, uBodyFx: { value: 0 }, uSharp: { value: 1.55 }, uAlpha: { value: 1 },
-    uNetM: { value: new THREE.Matrix4() }, uHumM: { value: new THREE.Matrix4() },
+    uNetM: { value: new THREE.Matrix4() }, uHumM: { value: new THREE.Matrix4() }, uCam: { value: new THREE.Vector3() },
     uC1: { value: new THREE.Color() }, uC2: { value: new THREE.Color() }, uC3: { value: new THREE.Color() },
   };
-  const pMat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, depthTest: false });
+  const pMat = new THREE.ShaderMaterial({ uniforms, vertexShader: P_VERT, fragmentShader: P_FRAG, transparent: true, depthWrite: false, depthTest: false });
   const points = new THREE.Points(geo, pMat);
   points.frustumCulled = false;
+  points.renderOrder = 6;
   scene.add(points);
 
   // network lines
   const netGroup = new THREE.Group();
-  netGroup.rotation.order = 'YXZ';
   const nl = [];
   for (const [a, b] of net.edges) nl.push(...net.nodes[a], ...net.nodes[b]);
   const netGeo = new THREE.BufferGeometry();
   netGeo.setAttribute('position', new THREE.Float32BufferAttribute(nl, 3));
   const netMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-  netGroup.add(new THREE.LineSegments(netGeo, netMat));
+  const netLines = new THREE.LineSegments(netGeo, netMat);
+  netLines.renderOrder = 5;
+  netGroup.add(netLines);
   scene.add(netGroup);
 
-  // human group: plexus + HUD (shares the particles' transform)
+  // ── the figure ──
   const humGroup = new THREE.Group();
   scene.add(humGroup);
-  const segIdx = plexus(human, NPLEX, small ? 0.17 : 0.135, 2);
-  const pl = new Float32Array(segIdx.length * 3);
-  segIdx.forEach((idx, j) => { pl[j * 3] = human[idx * 3]; pl[j * 3 + 1] = human[idx * 3 + 1]; pl[j * 3 + 2] = human[idx * 3 + 2]; });
-  const plexGeo = new THREE.BufferGeometry();
-  plexGeo.setAttribute('position', new THREE.BufferAttribute(pl, 3));
-  const plexMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-  humGroup.add(new THREE.LineSegments(plexGeo, plexMat));
+  const bodyU = {
+    uTime: { value: 0 }, uReveal: { value: -9 }, uFx: { value: 0 }, uScan: { value: -9 }, uLight: { value: 0 },
+    uAlpha: { value: 1 }, uDensity: { value: 28 }, uInflate: { value: 0 },
+    uFill: { value: new THREE.Color() }, uLine: { value: new THREE.Color() }, uRim: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() },
+  };
+  const depthMat = new THREE.ShaderMaterial({ uniforms: bodyU, vertexShader: B_VERT, fragmentShader: B_DEPTH, colorWrite: false });
+  const holoMat = new THREE.ShaderMaterial({ uniforms: bodyU, vertexShader: B_VERT, fragmentShader: B_FRAG, transparent: true, depthWrite: false });
+  const haloU = { uInflate: { value: 0.034 }, uReveal: bodyU.uReveal, uLight: bodyU.uLight, uAlpha: { value: 0 }, uRim: { value: new THREE.Color() } };
+  const haloMat = new THREE.ShaderMaterial({ uniforms: haloU, vertexShader: B_VERT, fragmentShader: H_FRAG, transparent: true, depthWrite: false, side: THREE.BackSide });
+  for (const m of [depthMat, holoMat, haloMat]) m.extensions = { derivatives: true };
+  const nerveU = { uTime: { value: 0 }, uGrow: { value: 0 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() } };
+  const nerveMat = new THREE.ShaderMaterial({ uniforms: nerveU, vertexShader: N_VERT, fragmentShader: N_FRAG, transparent: true, depthWrite: false, depthTest: false });
+  const brainLinkMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+  const heartU = { uSize: { value: 60 }, uColor: { value: new THREE.Color() }, uCore: { value: new THREE.Color() }, uBeat: { value: 0 }, uPhase: { value: 1 }, uAlpha: { value: 0 }, uLight: { value: 0 } };
+  const heartMat = new THREE.ShaderMaterial({ uniforms: heartU, vertexShader: SPRITE_VERT, fragmentShader: HEART_FRAG, transparent: true, depthWrite: false, depthTest: false });
+  let maxD = 4, body = null, bodyFailed = false, heartPos = [0.075, 0.86, 0.12];
 
-  const hudMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-  const hudMat2 = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-  const mkLines = (arr, mat) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); return new THREE.LineSegments(g, mat); };
-  // base: hologram projector rings + ticks
+  function buildBody(B) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(B.pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(B.nrm, 3));
+    g.setAttribute('aAO', new THREE.BufferAttribute(B.ao, 1));
+    g.setIndex(new THREE.BufferAttribute(B.index, 1));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1.9);
+    const pre = new THREE.Mesh(g, depthMat); pre.renderOrder = 0;
+    const halo = new THREE.Mesh(g, haloMat); halo.renderOrder = 1;
+    const holo = new THREE.Mesh(g, holoMat); holo.renderOrder = 2;
+    humGroup.add(pre, halo, holo);
+    // nerves
+    const ng = new THREE.BufferGeometry();
+    ng.setAttribute('position', new THREE.BufferAttribute(B.npos, 3));
+    ng.setAttribute('aD', new THREE.BufferAttribute(B.nd, 1));
+    const nerves = new THREE.LineSegments(ng, nerveMat);
+    nerves.renderOrder = 3;
+    nerves.frustumCulled = false;
+    humGroup.add(nerves);
+    maxD = B.meta.maxD;
+    // particles settle on the surface; a few form the brain's own little network
+    const S = sampleSurface(B, NSURF);
+    aH.set(S.P); aN.set(S.N);
+    const br = B.meta.anchors.brain, bp = new Float32Array(NBRAIN * 3);
+    for (let j = 0; j < NBRAIN; j++) {
+      let x, y, z;
+      do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; } while (x * x + y * y + z * z > 1);
+      bp[j * 3] = br[0] + x * 0.105; bp[j * 3 + 1] = br[1] + y * 0.068; bp[j * 3 + 2] = br[2] + z * 0.12;
+    }
+    aH.set(bp, NSURF * 3);
+    geo.attributes.aH.needsUpdate = true;
+    geo.attributes.aN.needsUpdate = true;
+    geo.attributes.position.needsUpdate = true;
+    const links = knnLinks(bp, NBRAIN, 2), lp = new Float32Array(links.length * 3);
+    links.forEach((idx, j) => { lp[j * 3] = bp[idx * 3]; lp[j * 3 + 1] = bp[idx * 3 + 1]; lp[j * 3 + 2] = bp[idx * 3 + 2]; });
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+    const bl = new THREE.LineSegments(lg, brainLinkMat);
+    bl.renderOrder = 4;
+    humGroup.add(bl);
+    // heart
+    heartPos = B.meta.anchors.heart;
+    const hg = new THREE.BufferGeometry();
+    hg.setAttribute('position', new THREE.Float32BufferAttribute(heartPos, 3));
+    hg.setAttribute('aS', new THREE.Float32BufferAttribute([1], 1));
+    const heart = new THREE.Points(hg, heartMat);
+    heart.frustumCulled = false;
+    heart.renderOrder = 7;
+    humGroup.add(heart);
+    body = B;
+  }
+  fetch(BODY_URL)
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then((buf) => buildBody(parseBody(buf)))
+    .catch(() => { bodyFailed = true; });
+
+  // ── HUD: platform, scan ring, orbit, light column, dust ──
+  const hudMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const hudMat2 = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const barMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+  const mkLines = (arr, mat, order = 8) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    const l = new THREE.LineSegments(g, mat);
+    l.renderOrder = order;
+    return l;
+  };
+  const platform = new THREE.Group();
+  platform.position.y = -1.75;
+  humGroup.add(platform);
   const base = new THREE.Group();
-  base.position.y = -1.75;
-  base.add(mkLines(ringPositions(0.4, 96), hudMat));
-  base.add(mkLines(ringPositions(0.6, 72, 1, 1, true), hudMat2));
-  base.add(mkLines(ringPositions(0.86, 128), hudMat2));
+  base.add(mkLines(ringPositions(0.42, 96), hudMat));
+  base.add(mkLines(ringPositions(0.62, 72, true), hudMat2));
+  base.add(mkLines(ringPositions(0.88, 128), hudMat2));
   const ticks = [];
   for (let i = 0; i < 72; i++) {
-    const t = (i / 72) * Math.PI * 2, r0 = 0.9, r1 = i % 6 === 0 ? 1.0 : 0.94;
+    const t = (i / 72) * Math.PI * 2, r0 = 0.92, r1 = i % 6 === 0 ? 1.0 : 0.95;
     ticks.push(Math.cos(t) * r0, 0, Math.sin(t) * r0, Math.cos(t) * r1, 0, Math.sin(t) * r1);
   }
   base.add(mkLines(ticks, hudMat2));
-  humGroup.add(base);
-  // scanning ring
+  // radial bar chart around the platform (live "data")
+  const NBAR = 90, barPos = new Float32Array(NBAR * 6), barSeed = Array.from({ length: NBAR }, () => [rnd(), rnd() * 6.28]);
+  const bars = mkLines(barPos, barMat);
+  base.add(bars);
+  platform.add(base);
   const scanRing = mkLines(ringPositions(1, 96), hudMat);
   humGroup.add(scanRing);
-  // orbit ring + satellites
   const orbit = new THREE.Group();
   orbit.position.y = 0.62;
   orbit.rotation.set(0.32, 0, -0.12);
-  orbit.add(mkLines(ringPositions(1.02, 128, 1, 1, true), hudMat2));
+  orbit.add(mkLines(ringPositions(1.02, 128, true), hudMat2));
   humGroup.add(orbit);
   const dotMat = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color() }, uSize: { value: 7 }, uOpacity: { value: 0 } },
+    uniforms: { uColor: { value: new THREE.Color() }, uSize: { value: 7 }, uOpacity: { value: 0 }, uLight: bodyU.uLight },
     vertexShader: 'uniform float uSize; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * mv; gl_PointSize = uSize; }',
-    fragmentShader: 'uniform vec3 uColor; uniform float uOpacity; void main(){ float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard; gl_FragColor = vec4(uColor, smoothstep(0.5, 0.1, d) * uOpacity); }',
-    transparent: true, depthWrite: false, depthTest: false,
+    fragmentShader: DOT_FRAG, transparent: true, depthWrite: false,
   });
   const satGeo = new THREE.BufferGeometry();
   satGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
   const sats = new THREE.Points(satGeo, dotMat);
   sats.frustumCulled = false;
+  sats.renderOrder = 8;
   orbit.add(sats);
-  // floor glow
   const glowMat = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color() }, uOpacity: { value: 0 } },
+    uniforms: { uColor: { value: new THREE.Color() }, uOpacity: { value: 0 }, uLight: bodyU.uLight },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-    fragmentShader: 'uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){ float d = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(uColor, pow(clamp(1.0 - d, 0.0, 1.0), 2.2) * uOpacity); }',
-    transparent: true, depthWrite: false, depthTest: false,
+    fragmentShader: GLOW_FRAG, transparent: true, depthWrite: false,
   });
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), glowMat);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.8), glowMat);
   glow.rotation.x = -Math.PI / 2;
-  glow.position.y = -1.76;
-  humGroup.add(glow);
+  glow.position.y = -0.01;
+  glow.renderOrder = 1;
+  platform.add(glow);
+  const beamMat = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color() }, uOpacity: { value: 0 }, uLight: bodyU.uLight },
+    vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.6, 1.5, 64, 1, true), beamMat);
+  beam.position.y = 0.75;
+  beam.renderOrder = 1;
+  platform.add(beam);
+  const ND = small ? 140 : 240, dpos = new Float32Array(ND * 3), dr = new Float32Array(ND * 4);
+  for (let i = 0; i < ND; i++) {
+    const a = rnd() * Math.PI * 2, r = 0.55 + Math.sqrt(rnd()) * 1.5;
+    dpos[i * 3] = Math.cos(a) * r; dpos[i * 3 + 1] = rnd() * 3.9 - 1.85; dpos[i * 3 + 2] = Math.sin(a) * r * 0.7;
+    dr[i * 4] = rnd(); dr[i * 4 + 1] = rnd(); dr[i * 4 + 2] = rnd(); dr[i * 4 + 3] = rnd();
+  }
+  const dustGeo = new THREE.BufferGeometry();
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3));
+  dustGeo.setAttribute('aR', new THREE.BufferAttribute(dr, 4));
+  const dustMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: uniforms.uTime, uSize: { value: 2 }, uColor: { value: new THREE.Color() }, uOpacity: { value: 0 }, uLight: bodyU.uLight },
+    vertexShader: DUST_VERT, fragmentShader: DUST_FRAG, transparent: true, depthWrite: false, depthTest: false,
+  });
+  const dust = new THREE.Points(dustGeo, dustMat);
+  dust.frustumCulled = false;
+  dust.renderOrder = 9;
+  humGroup.add(dust);
 
   // ── theme ──
-  let light = false;
+  let light = false, pal = PALETTE.dark;
   function setTheme(th) {
     light = th === 'light';
-    const P = light ? PALETTE.light : PALETTE.dark;
+    const P = (pal = light ? PALETTE.light : PALETTE.dark);
     uniforms.uC1.value.set(P.c1); uniforms.uC2.value.set(P.c2); uniforms.uC3.value.set(P.c3);
     uniforms.uLight.value = light ? 1 : 0;
     uniforms.uSharp.value = P.sharp;
+    bodyU.uLight.value = light ? 1 : 0;
+    bodyU.uFill.value.set(P.fill); bodyU.uLine.value.set(P.line); bodyU.uRim.value.set(P.rim); bodyU.uEdge.value.set(P.edge);
+    haloU.uRim.value.set(P.halo);
+    nerveU.uLight.value = light ? 1 : 0;
+    nerveU.uCol.value.set(P.nerve); nerveU.uPulse.value.set(P.pulse);
+    heartU.uLight.value = light ? 1 : 0;
+    heartU.uColor.value.set(P.heart); heartU.uCore.value.set(P.heartCore);
     const blend = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-    for (const m of [pMat, netMat, plexMat, hudMat, hudMat2, dotMat, glowMat]) { m.blending = blend; m.needsUpdate = true; }
-    netMat.color.set(P.net); plexMat.color.set(P.plex); hudMat.color.set(P.hud); hudMat2.color.set(P.hud2);
+    for (const m of [netMat, brainLinkMat, hudMat, hudMat2, barMat]) { m.blending = blend; m.needsUpdate = true; }
+    for (const m of [pMat, holoMat, haloMat, nerveMat, heartMat, dotMat, glowMat, beamMat, dustMat]) { m.blending = blend; m.premultipliedAlpha = !light; m.needsUpdate = true; }
+    netMat.color.set(P.net); hudMat.color.set(P.hud); hudMat2.color.set(P.hud2); barMat.color.set(P.hud); brainLinkMat.color.set(P.line);
     dotMat.uniforms.uColor.value.set(P.hud); glowMat.uniforms.uColor.value.set(P.glow);
-    pal = P;
+    beamMat.uniforms.uColor.value.set(P.glow); dustMat.uniforms.uColor.value.set(P.dust);
   }
-  let pal = PALETTE.dark;
   setTheme(theme);
 
   // ── callouts (DOM) ──
   const CALLS = [
-    { k: 'brain', at: [0, 1.56, 0], side: 'outer', dy: -46, m: true },
-    { k: 'heart', at: [0.1, 0.98, 0.17], side: 'inner', dy: -34, m: false },
-    { k: 'rhand', at: [0.6, -0.1, 0.06], side: '+x', dy: 36, m: true },
-    { k: 'lhand', at: [-0.6, -0.1, 0.06], side: '-x', dy: 36, m: true },
-    { k: 'base', at: [0, -1.75, 0.86], side: 'inner', dy: 18, m: true },
+    { k: 'brain', at: [0.014, 1.62, 0.0], side: 'outer', dy: -46, m: true },
+    { k: 'heart', at: [0.08, 0.88, 0.2], side: 'inner', dy: -34, m: false },
+    { k: 'rhand', at: [0.5, -0.22, 0.08], side: '+x', dy: 36, m: true },
+    { k: 'lhand', at: [-0.47, -0.25, 0.02], side: '-x', dy: 36, m: true },
+    { k: 'base', at: [0, -1.75, 0.88], side: 'inner', dy: 18, m: true },
   ];
   const NS = 'http://www.w3.org/2000/svg';
   calloutsEl.innerHTML = '';
@@ -464,7 +687,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   }
 
   // ── layout ──
-  let W = 1, H = 1, portrait = false, side = lang === 'ar' ? -1 : 1;
+  let W = 1, H = 1, portrait = false, side = lang === 'ar' ? -1 : 1, dpr = 1;
   const tgt = { x: 0, y: 0, s: 1, yaw: 0 }, cur = { x: 0, y: 0, s: 1, yaw: 0 };
   let netScale = 1, netRz = 0, first = true;
   function layout() {
@@ -484,8 +707,11 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
       const reserve = getReserve ? getReserve() : H * 0.42;
       const top = 70, bottom = H - reserve - 22;
       const fig = Math.max(160, bottom - top);
-      const s = Math.max(0.3, Math.min(0.62, fig / (3.5 * ppw), (vw * 0.52) / 1.3));
-      const centerPx = top + Math.min(fig, 3.5 * s * ppw) / 2;
+      // tablets in portrait get a larger figure; any spare height is shared above and
+      // below it, nudged up so the platform keeps clear of the text
+      const s = Math.max(0.3, Math.min(W >= 700 ? 0.74 : 0.62, fig / (3.5 * ppw), (vw * 0.52) / 1.3));
+      const slack = Math.max(0, fig - 3.5 * s * ppw);
+      const centerPx = top + fig / 2 - Math.min(slack / 2, 0.15 * s * ppw);
       tgt.s = s; tgt.x = 0; tgt.y = (H / 2 - centerPx) / ppw + 0.02 * s; tgt.yaw = 0;
       netScale = Math.min(0.56, (vw * 0.9) / 3.1); netRz = Math.PI / 2;
       // room beside the arms (widest point, unrotated) so labels never leave the screen
@@ -493,6 +719,11 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
       calloutsEl.style.setProperty('--co-max', Math.max(64, room) + 'px');
       calloutsEl.classList.toggle('compact', room < 130);
     }
+    // contour spacing follows the on-screen size (about 8–9 device pixels apart)
+    const pxPerUnit = ppw * tgt.s * dpr;
+    bodyU.uDensity.value = Math.max(12, Math.min(34, pxPerUnit / 8.5));
+    // the heart keeps the same size relative to the body on every screen
+    heartU.uSize.value = pxPerUnit * 0.375;
     if (first) Object.assign(cur, tgt);
   }
   // widest label that sits on the screen-edge side of the figure in landscape
@@ -507,13 +738,14 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   function resize() {
     W = canvas.clientWidth || innerWidth;
     H = canvas.clientHeight || innerHeight;
-    const dpr = Math.min(devicePixelRatio || 1, small ? 2 : 1.75);
+    dpr = Math.min(devicePixelRatio || 1, small ? 2 : 1.75);
     renderer.setPixelRatio(dpr);
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
     uniforms.uSize.value = pal.size * dpr;
     dotMat.uniforms.uSize.value = 7 * dpr;
+    dustMat.uniforms.uSize.value = 2.2 * dpr;
     layout();
     measure();
     layout();
@@ -545,13 +777,13 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const gap = portrait ? 12 : 30;
     const dyK = portrait ? 0.62 : 1;
     calls.forEach((c, i) => {
-      const allowed = !portrait || c.m;
+      const allowed = (!portrait || c.m) && !!body;
       const want = allowed && T >= T_READY - 0.25 + i * 0.16 && c.el.innerHTML;
       if (want !== c.shown) { c.shown = want; c.el.classList.toggle('show', !!want); c.g.classList.toggle('show', !!want); }
       if (!want) return;
       v3.set(c.at[0], c.at[1], c.at[2]).applyMatrix4(humGroup.matrixWorld).project(camera);
       const sx = (v3.x * 0.5 + 0.5) * W, sy = (-v3.y * 0.5 + 0.5) * H;
-      let sd = c.side === 'outer' ? outerSide : c.side === 'inner' ? -outerSide : sx >= fx ? 1 : -1;
+      const sd = c.side === 'outer' ? outerSide : c.side === 'inner' ? -outerSide : sx >= fx ? 1 : -1;
       const lx = fx + sd * (halfW + gap);
       let ly = sy + c.dy * dyK;
       ly = Math.max(70 + c.h / 2, Math.min(H - 12 - c.h / 2, ly));
@@ -564,16 +796,22 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     });
   }
 
-  let raf = 0, running = true;
+  let raf = 0;
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    const dt = Math.min((now - last) / 1000, 0.05);
+    // animation steps stay small, but the story clock follows real time even on slow
+    // (software-rendered) machines, so the intro never drags past a few seconds
+    const rawDt = Math.max(0, (now - last) / 1000);
+    const dt = Math.min(rawDt, 0.05);
     last = now;
     frameNo++;
     if (scrollK >= 0.999 && frameNo % 2) return; // half rate when it's only a backdrop
     time += dt;
     first = false;
-    if (freezeT === null) T += dt * speed; else T = freezeT;
+    if (freezeT === null) T += Math.min(rawDt, 0.25) * speed; else T = freezeT;
+    // hold before the morph until the body has arrived (slow networks)
+    if (!body && !bodyFailed && T > T_MORPH - 0.05 && freezeT === null) T = T_MORPH - 0.05;
+    if (bodyFailed && !fired.ready) { fire('morph'); fire('formed'); fire('ready'); }
     if (speed > 1 && T >= T_END) speed = 1;
 
     if (T >= T_MORPH) fire('morph');
@@ -581,12 +819,14 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     if (T >= T_READY) fire('ready');
 
     const netFade = easeOut(clamp01(T / 0.9));
-    const morph = ease(clamp01((T - T_MORPH) / D_MORPH));
-    const fx = easeOut(clamp01((T - T_FORMED) / 1.0));
+    const morph = body ? ease(clamp01((T - T_MORPH) / D_MORPH)) : 0;
+    const fx = body ? easeOut(clamp01((T - T_FORMED) / 1.0)) : 0;
     uniforms.uTime.value = time;
     uniforms.uMorph.value = morph;
     uniforms.uNetFade.value = netFade;
     uniforms.uBodyFx.value = fx;
+    bodyU.uTime.value = time;
+    nerveU.uTime.value = time;
 
     // pose & layout easing
     const k = 1 - Math.pow(0.0015, dt);
@@ -606,33 +846,63 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uNetM.value.copy(netGroup.matrixWorld);
     netMat.opacity = pal.netOp * netFade * (1 - clamp01(morph * 1.6));
 
-    // scan line: follows the assembly front, then sweeps the body
-    const front = -1.75 + 3.5 * clamp01((morph * 1.3 - 0.34) / 0.62);
-    const sweep = Math.sin(time * 0.55) * 1.55 + 0.05;
-    const scanY = morph < 1 ? front : front + (sweep - front) * fx;
-    uniforms.uScan.value = morph > 0 && morph < 1 ? front : fx > 0 ? scanY : -9;
+    // the hologram prints itself from the floor up, just behind the arriving particles
+    const reveal = -1.8 + 3.62 * clamp01((morph - 0.4) / 0.52);
+    bodyU.uReveal.value = morph > 0 ? reveal : -9;
+    haloU.uAlpha.value = clamp01((morph - 0.45) * 2) * (0.55 + 0.45 * fx);
+    // scan band: rides the print front, then sweeps the body slowly
+    const sweep = Math.sin(time * 0.5) * 1.6 + 0.02;
+    const scanY = morph < 1 ? reveal : reveal + (sweep - reveal) * fx;
+    bodyU.uScan.value = scanY;
+    bodyU.uFx.value = Math.max(fx, morph > 0 && morph < 1 ? 0.6 : 0);
+    uniforms.uScan.value = morph > 0 ? scanY : -9;
     scanRing.position.y = scanY;
-    const wy = scanY > 1.28 ? 0.26 : scanY > 0.95 ? 0.56 : scanY > -0.25 ? 0.72 : 0.42;
+    const wy = scanY > 1.28 ? 0.26 : scanY > 0.95 ? 0.58 : scanY > -0.25 ? 0.7 : scanY > -1.0 ? 0.44 : 0.36;
     const sxs = scanRing.scale.x + (wy - scanRing.scale.x) * Math.min(1, dt * 6);
     scanRing.scale.set(sxs, 1, sxs * 0.62);
 
-    plexMat.opacity = pal.plexOp * fx;
+    // nervous system & heart
+    const grow = clamp01((T - T_NERVE) / D_NERVE);
+    nerveU.uGrow.value = body ? (grow <= 0 ? -1 : easeOut(grow) * (maxD + 0.2)) : -1;
+    nerveU.uAlpha.value = body ? clamp01(grow * 3) : 0;
+    brainLinkMat.opacity = (light ? 0.35 : 0.32) * clamp01((morph - 0.75) * 4) * (0.7 + 0.3 * Math.sin(time * 2.3));
+    const beatT = (time * 1.1) % 1, b1 = Math.exp(-Math.pow(beatT / 0.07, 2)), b2 = Math.exp(-Math.pow((beatT - 0.26) / 0.06, 2)) * 0.6;
+    heartU.uBeat.value = Math.max(b1, b2);
+    heartU.uPhase.value = clamp01(beatT / 0.75);
+    heartU.uAlpha.value = clamp01((T - T_FORMED + 0.4) / 0.8);
+
     const hudIn = Math.max(fx, morph > 0 && morph < 1 ? 0.75 : 0);
     hudMat.opacity = pal.hudOp * hudIn;
     hudMat2.opacity = pal.hudOp * 0.55 * fx;
+    barMat.opacity = pal.hudOp * 0.7 * fx;
     dotMat.uniforms.uOpacity.value = fx;
     glowMat.uniforms.uOpacity.value = pal.glowOp * Math.max(fx, morph * 0.6);
+    beamMat.uniforms.uOpacity.value = pal.beamOp * Math.max(fx, morph * 0.5);
+    dustMat.uniforms.uOpacity.value = pal.dustOp * fx;
     base.rotation.y = time * 0.15;
+    // when the floor sits near the eye line (phones) tip the platform a little so it still reads as a disc
+    const floorY = humGroup.position.y - 1.75 * cur.s;
+    platform.rotation.x = Math.max(0, 0.2 - Math.atan2(-floorY, CAM_Z));
     orbit.rotation.y = time * 0.2;
     // keep the orbit reading as an ellipse when the figure sits above the eye line (phones)
     orbit.rotation.x = 0.32 + Math.atan2(humGroup.position.y + 0.62 * cur.s, CAM_Z);
     const sp = sats.geometry.attributes.position;
     for (let i = 0; i < 3; i++) { const a = time * (0.6 + i * 0.17) + i * 2.1; sp.setXYZ(i, Math.cos(a) * 1.02, 0, Math.sin(a) * 1.02); }
     sp.needsUpdate = true;
+    if (fx > 0) {
+      for (let i = 0; i < NBAR; i++) {
+        const a = (i / NBAR) * Math.PI * 2, [s0, ph] = barSeed[i];
+        const h = 0.025 + (0.05 + 0.09 * s0) * (0.55 + 0.45 * Math.sin(time * (0.6 + s0) + ph)) * (i % 9 === 0 ? 1.6 : 1);
+        const r0 = 1.06, r1 = r0 + h * fx, c = Math.cos(a), s = Math.sin(a);
+        barPos.set([c * r0, 0, s * r0, c * r1, 0, s * r1], i * 6);
+      }
+      bars.geometry.attributes.position.needsUpdate = true;
+    }
 
     camera.position.x = smx * 0.22;
     camera.position.y = -smy * 0.12;
     camera.lookAt(0, 0, 0);
+    uniforms.uCam.value.copy(camera.position);
 
     renderer.render(scene, camera);
     updateCallouts();
@@ -645,7 +915,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
 
   return {
     skip() { if (T < T_END) speed = 6; },
-    setTheme(th) { setTheme(th); uniforms.uSize.value = pal.size * Math.min(devicePixelRatio || 1, small ? 2 : 1.75); },
+    setTheme(th) { setTheme(th); uniforms.uSize.value = pal.size * dpr; },
     setLang(l, map) { side = l === 'ar' ? -1 : 1; layout(); setLabels(map); layout(); },
     setScroll(k) { scrollK = k; },
     relayout() { layout(); measure(); layout(); },
