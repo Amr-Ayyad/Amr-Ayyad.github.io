@@ -1115,7 +1115,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const idle = reduced ? 0 : Math.sin(time * 0.23) * 0.06;
     flow.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
     if (portrait) flow.scale.set(cur.s, cur.s * side, cur.s); else flow.scale.set(cur.s * side, cur.s, cur.s);
-    flow.rotation.set(smy * 0.11 * tilt, smx * 0.24 * tilt + idle, cur.rot);
+    flow.rotation.set(smy * 0.33 * tilt, smx * 0.72 * tilt + idle, cur.rot);
     flow.updateMatrixWorld();
     uniforms.uFlowM.value.copy(flow.matrixWorld);
     uniforms.uBrainM.value.copy(brainG.matrixWorld);
@@ -1148,8 +1148,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uNetM.value.copy(netGroup.matrixWorld);
     netMat.opacity = pal.netOp * netFade * (1 - clamp01(morph * 1.6));
 
-    camera.position.x = smx * 0.3 * tilt;
-    camera.position.y = -smy * 0.16 * tilt;
+    camera.position.x = smx * 0.9 * tilt;
+    camera.position.y = -smy * 0.48 * tilt;
     camera.lookAt(0, 0, 0);
     uniforms.uCam.value.copy(camera.position);
     renderer.render(scene, camera);
