@@ -125,6 +125,12 @@ function ringPositions(r, seg, dashed = false) {
 }
 
 // ── Shaders ──
+// Dark theme draws light: colour is added, and alpha rises with the brightest channel so the
+// canvas always holds valid premultiplied colour. Pixels whose alpha stays 0 are dropped by
+// some graphics cards and compositors, which made the whole figure vanish on those screens.
+const GLOW = /* glsl */ `
+vec4 glow(vec3 c){ c = clamp(c, 0.0, 1.0); return vec4(c, max(c.r, max(c.g, c.b))); }
+`;
 // particles: network signals → points on the body surface
 const P_VERT = /* glsl */ `
 uniform float uTime, uMorph, uNetFade, uSize, uScan, uLight, uBodyFx;
@@ -173,7 +179,7 @@ void main(){
   ah *= 1.0 - 0.42 * uLight * uBodyFx * (1.0 - aI.y);
   vA = mix(an, ah, e);
 }`;
-const P_FRAG = /* glsl */ `
+const P_FRAG = /* glsl */ `${GLOW}
 uniform float uSharp, uAlpha, uLight;
 varying vec3 vCol;
 varying float vA;
@@ -182,7 +188,7 @@ void main(){
   if (d > 0.5) discard;
   float a = clamp(pow(1.0 - d * 2.0, uSharp) * vA * uAlpha, 0.0, 1.0);
   // dark: light is added onto the page (premultiplied, alpha 0); light: ink over it
-  gl_FragColor = uLight < 0.5 ? vec4(vCol * a, 0.0) : vec4(vCol, a);
+  gl_FragColor = uLight < 0.5 ? glow(vCol * a) : vec4(vCol, a);
 }`;
 
 // hologram body (shared vertex stage keeps the depth pre-pass bit-identical)
@@ -208,7 +214,7 @@ void main(){
   if (vP.y > uReveal) discard;
   gl_FragColor = vec4(0.0);
 }`;
-const B_FRAG = /* glsl */ `
+const B_FRAG = /* glsl */ `${GLOW}
 uniform float uTime, uReveal, uFx, uScan, uLight, uAlpha, uDensity;
 uniform vec3 uFill, uLine, uRim, uEdge;
 varying vec3 vN;
@@ -241,13 +247,13 @@ void main(){
       + uRim * fres * 0.9
       + uLine * sb * (0.06 + 0.6 * ln) + uEdge * sb * ln * 0.25
       + (uLine * 0.8 + uEdge * 0.5) * edge;
-    gl_FragColor = vec4(col * uAlpha, 0.0);
+    gl_FragColor = glow(col * uAlpha);
   } else {
     float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.3 * ln) + edge * 0.7;
     gl_FragColor = vec4(mix(uLine, uRim, fres), clamp(a, 0.0, 0.92) * uAlpha);
   }
 }`;
-const H_FRAG = /* glsl */ `
+const H_FRAG = /* glsl */ `${GLOW}
 uniform float uReveal, uLight, uAlpha;
 uniform vec3 uRim;
 varying vec3 vN;
@@ -256,7 +262,7 @@ varying vec3 vP;
 void main(){
   if (vP.y > uReveal) discard;
   float g = pow(abs(dot(normalize(vN), normalize(vV))), 2.6);
-  if (uLight < 0.5) gl_FragColor = vec4(uRim * g * 0.42 * uAlpha, 0.0);
+  if (uLight < 0.5) gl_FragColor = glow(uRim * g * 0.42 * uAlpha);
   else gl_FragColor = vec4(uRim, g * 0.16 * uAlpha);
 }`;
 // nervous system: grows from the brain, impulses travel outward
@@ -267,7 +273,7 @@ void main(){
   vD = aD;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
-const N_FRAG = /* glsl */ `
+const N_FRAG = /* glsl */ `${GLOW}
 uniform float uTime, uGrow, uAlpha, uLight;
 uniform vec3 uCol, uPulse;
 varying float vD;
@@ -277,7 +283,7 @@ void main(){
   float ph = fract(vD * 0.75 - uTime * 0.42);
   float pulse = smoothstep(0.8, 0.97, ph) * (1.0 - smoothstep(0.97, 1.0, ph));
   float k = clamp(pulse * 1.1 + tip, 0.0, 1.0);
-  if (uLight < 0.5) gl_FragColor = vec4(mix(uCol, uPulse, k) * (0.42 + pulse * 1.25 + tip * 1.4) * uAlpha, 0.0);
+  if (uLight < 0.5) gl_FragColor = glow(mix(uCol, uPulse, k) * (0.42 + pulse * 1.25 + tip * 1.4) * uAlpha);
   else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.32 + pulse * 0.6 + tip, 0.0, 1.0) * uAlpha);
 }`;
 const SPRITE_VERT = /* glsl */ `
@@ -291,7 +297,7 @@ void main(){
   gl_PointSize = uSize * aS * (7.0 / -mv.z);
 }`;
 // heart: core glow + expanding ring on every beat
-const HEART_FRAG = /* glsl */ `
+const HEART_FRAG = /* glsl */ `${GLOW}
 uniform vec3 uColor, uCore;
 uniform float uBeat, uPhase, uAlpha, uLight;
 void main(){
@@ -304,17 +310,17 @@ void main(){
   float ring = exp(-pow((d - rr) * 22.0, 2.0)) * (1.0 - uPhase) * 0.9;
   vec3 c = uColor * (halo + ring) + uCore * core;
   float a = clamp(core + halo + ring, 0.0, 1.0);
-  if (uLight < 0.5) gl_FragColor = vec4(c * uAlpha, 0.0);
+  if (uLight < 0.5) gl_FragColor = glow(c * uAlpha);
   else gl_FragColor = vec4(uColor, clamp(core * 0.9 + ring * 0.7 + halo * 0.25, 0.0, 1.0) * uAlpha);
 }`;
-const DOT_FRAG = /* glsl */ `
+const DOT_FRAG = /* glsl */ `${GLOW}
 uniform vec3 uColor;
 uniform float uOpacity, uLight;
 void main(){
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
   float a = smoothstep(0.5, 0.08, d) * uOpacity;
-  gl_FragColor = uLight < 0.5 ? vec4(uColor * a, 0.0) : vec4(uColor, a);
+  gl_FragColor = uLight < 0.5 ? glow(uColor * a) : vec4(uColor, a);
 }`;
 // drifting light motes around the figure
 const DUST_VERT = /* glsl */ `
@@ -331,7 +337,7 @@ void main(){
   float edge = smoothstep(-1.85, -1.5, p.y) * (1.0 - smoothstep(1.5, 2.0, p.y));
   vA = edge * (0.35 + 0.65 * (0.5 + 0.5 * sin(uTime * (0.8 + aR.w * 2.0) + aR.y * 40.0)));
 }`;
-const DUST_FRAG = /* glsl */ `
+const DUST_FRAG = /* glsl */ `${GLOW}
 uniform vec3 uColor;
 uniform float uOpacity, uLight;
 varying float vA;
@@ -339,7 +345,7 @@ void main(){
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
   float a = pow(1.0 - d * 2.0, 1.6) * vA * uOpacity;
-  gl_FragColor = uLight < 0.5 ? vec4(uColor * a, 0.0) : vec4(uColor, a);
+  gl_FragColor = uLight < 0.5 ? glow(uColor * a) : vec4(uColor, a);
 }`;
 // projector light column rising from the platform
 const BEAM_VERT = /* glsl */ `
@@ -353,7 +359,7 @@ void main(){
   vV = -mv.xyz;
   gl_Position = projectionMatrix * mv;
 }`;
-const BEAM_FRAG = /* glsl */ `
+const BEAM_FRAG = /* glsl */ `${GLOW}
 uniform vec3 uColor;
 uniform float uOpacity, uLight;
 varying float vH;
@@ -362,17 +368,17 @@ varying vec3 vV;
 void main(){
   float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
   float a = pow(1.0 - vH, 2.2) * (0.25 + 0.75 * f * f) * uOpacity;
-  if (uLight < 0.5) gl_FragColor = vec4(uColor * a, 0.0);
+  if (uLight < 0.5) gl_FragColor = glow(uColor * a);
   else gl_FragColor = vec4(uColor, a * 0.6);
 }`;
-const GLOW_FRAG = /* glsl */ `
+const GLOW_FRAG = /* glsl */ `${GLOW}
 uniform vec3 uColor;
 uniform float uOpacity, uLight;
 varying vec2 vUv;
 void main(){
   float d = length(vUv - 0.5) * 2.0;
   float a = pow(clamp(1.0 - d, 0.0, 1.0), 2.4) * uOpacity;
-  gl_FragColor = uLight < 0.5 ? vec4(uColor * a, 0.0) : vec4(uColor, a);
+  gl_FragColor = uLight < 0.5 ? glow(uColor * a) : vec4(uColor, a);
 }`;
 
 const PALETTE = {
@@ -636,9 +642,15 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     nerveU.uCol.value.set(P.nerve); nerveU.uPulse.value.set(P.pulse);
     heartU.uLight.value = light ? 1 : 0;
     heartU.uColor.value.set(P.heart); heartU.uCore.value.set(P.heartCore);
-    const blend = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-    for (const m of [netMat, brainLinkMat, hudMat, hudMat2, barMat]) { m.blending = blend; m.needsUpdate = true; }
-    for (const m of [pMat, holoMat, haloMat, nerveMat, heartMat, dotMat, glowMat, beamMat, dustMat]) { m.blending = blend; m.premultipliedAlpha = !light; m.needsUpdate = true; }
+    // light: ink over the page. dark: light is added and alpha grows with it (see GLOW)
+    const lightUp = (m, scaleByAlpha) => {
+      m.blending = THREE.CustomBlending;
+      m.blendEquation = THREE.AddEquation; m.blendEquationAlpha = THREE.AddEquation;
+      m.blendSrc = scaleByAlpha ? THREE.SrcAlphaFactor : THREE.OneFactor; m.blendDst = THREE.OneFactor;
+      m.blendSrcAlpha = THREE.OneFactor; m.blendDstAlpha = THREE.OneFactor;
+    };
+    for (const m of [netMat, brainLinkMat, hudMat, hudMat2, barMat]) { if (light) m.blending = THREE.NormalBlending; else lightUp(m, true); m.needsUpdate = true; }
+    for (const m of [pMat, holoMat, haloMat, nerveMat, heartMat, dotMat, glowMat, beamMat, dustMat]) { if (light) m.blending = THREE.NormalBlending; else lightUp(m, false); m.premultipliedAlpha = false; m.needsUpdate = true; }
     netMat.color.set(P.net); hudMat.color.set(P.hud); hudMat2.color.set(P.hud2); barMat.color.set(P.hud); brainLinkMat.color.set(P.line);
     dotMat.uniforms.uColor.value.set(P.hud); glowMat.uniforms.uColor.value.set(P.glow);
     beamMat.uniforms.uColor.value.set(P.glow); dustMat.uniforms.uColor.value.set(P.dust);
