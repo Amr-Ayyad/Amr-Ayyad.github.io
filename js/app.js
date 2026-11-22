@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122153745';
-import { icon } from './icons.js?v=20261122153745';
+import { CV, UI } from './data.js?v=20261122153939';
+import { icon } from './icons.js?v=20261122153939';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -526,7 +526,7 @@ onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js?v=20261122153745')
+import('./scene.js?v=20261122153939')
   .then((m) => {
     scene = m.createScene({
       canvas,
