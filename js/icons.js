@@ -1,0 +1,40 @@
+// Line icons (24×24, stroke = currentColor)
+const P = {
+  bars: '<path d="M6 20V12"/><path d="M12 20V5"/><path d="M18 20v-8"/><path d="M3.5 20.5h17"/>',
+  dash: '<rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="4.5" rx="1.8"/><rect x="13" y="10" width="7.5" height="10.5" rx="2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/>',
+  table: '<rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.8h17M9.5 4v16"/>',
+  db: '<ellipse cx="12" cy="5.8" rx="7" ry="2.6"/><path d="M5 5.8v12.4c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V5.8"/><path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/>',
+  pie: '<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12z"/><path d="M15 3.9a8.6 8.6 0 0 1 5.1 5.1H15z"/>',
+  gauge: '<path d="M4 17.5a8 8 0 1 1 16 0"/><path d="M12 14.5l4.2-4.7"/><circle cx="12" cy="14.8" r="1.4"/>',
+  curve: '<path d="M3.5 19.5h17"/><path d="M4.5 18c3.4 0 4.2-12 7.5-12s4.1 12 7.5 12"/><path d="M12 6v13.5" stroke-dasharray="1.6 2.2"/>',
+  neural: '<circle cx="5" cy="6.5" r="1.9"/><circle cx="5" cy="17.5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="6.5" r="1.9"/><circle cx="19" cy="17.5" r="1.9"/><path d="M6.7 7.5l3.6 3.3M6.7 16.5l3.6-3.3M13.7 10.8l3.6-3.3M13.7 13.2l3.6 3.3"/>',
+  chat: '<path d="M20.5 11.6a8 8 0 0 1-11.7 7.1l-4.3 1.1 1.1-4.1a8 8 0 1 1 14.9-4.1z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/>',
+  bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.7 10.7c.7.6 1.2 1.4 1.2 2.3h5c0-.9.5-1.7 1.2-2.3A6 6 0 0 0 12 3z"/>',
+  team: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 20c0-3.2 2.5-5.8 5.5-5.8s5.5 2.6 5.5 5.8"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.2 14.4c2.6.3 4.3 2.6 4.3 5.6"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
+  scale: '<path d="M12 3.5v17M7 20.5h10M5 7h14"/><path d="M8 7l-3.2 7a3.2 3.2 0 0 0 6.4 0zM16 7l-3.2 7a3.2 3.2 0 0 0 6.4 0z"/>',
+  trophy: '<path d="M8 4h8v5.5a4 4 0 0 1-8 0z"/><path d="M8 6H5.2a3 3 0 0 0 3 4M16 6h2.8a3 3 0 0 1-3 4"/><path d="M12 13.5V17M8.5 20.5h7M9.5 17h5v3.5h-5z"/>',
+  code: '<path d="M8.5 8.5L4.5 12l4 3.5M15.5 8.5l4 3.5-4 3.5M13.4 5.5l-2.8 13"/>',
+  cap: '<path d="M2.5 9.5L12 5l9.5 4.5L12 14z"/><path d="M6.5 11.5v4.2c0 1.6 2.5 3 5.5 3s5.5-1.4 5.5-3v-4.2"/><path d="M21.5 9.5v5"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.5 3.6 5.3 3.6 8.5s-1.2 6-3.6 8.5c-2.4-2.5-3.6-5.3-3.6-8.5S9.6 6 12 3.5z"/>',
+  seal: '<path d="M12 2.8l2.3 1.9 3-.2.7 2.9 2.6 1.5-1.2 2.8 1.2 2.8-2.6 1.5-.7 2.9-3-.2L12 21.2l-2.3-1.9-3 .2-.7-2.9-2.6-1.5 1.2-2.8-1.2-2.8 2.6-1.5.7-2.9 3 .2z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.6"/>',
+  spark: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1-5.1-1.9 5.1-1.9z"/><path d="M18.5 16.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+  shield: '<path d="M12 3.5l7 2.8v5.2c0 4.3-2.9 7.6-7 9-4.1-1.4-7-4.7-7-9V6.3z"/><path d="M9 12l2 2 4-4.5"/>',
+  sigma: '<path d="M17.5 5H6.5l6 7-6 7h11"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.8 7.2l8.2 5.8 8.2-5.8"/>',
+  copy: '<rect x="8.5" y="8.5" width="12" height="12" rx="2.6"/><path d="M15.5 8.5V6.2a2.2 2.2 0 0 0-2.2-2.2H6.2A2.2 2.2 0 0 0 4 6.2v7.1a2.2 2.2 0 0 0 2.2 2.2h2.3"/>',
+  doc: '<path d="M14 3.5H7.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V8z"/><path d="M14 3.5V8h4.5M9 13h6M9 16.5h4"/>',
+  arrow: '<path d="M12 4.5v15M6 13.5l6 6 6-6"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6L6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/>',
+  moon: '<path d="M20 14.6A8.2 8.2 0 0 1 9.4 4 8.2 8.2 0 1 0 20 14.6z"/>',
+  person: '<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c0-4.1 3.4-7.3 7.5-7.3s7.5 3.2 7.5 7.3"/>',
+  quote: '<path d="M4.5 6.5h15M4.5 11.5h15M4.5 16.5h9"/>',
+  chart: '<path d="M4 19.5h16"/><path d="M6.5 15l4-4.5 3 3 4.5-6"/><path d="M15 7.5h3v3"/>',
+  case: '<rect x="3" y="7" width="18" height="13" rx="2.8"/><path d="M8.5 7V5.3A1.8 1.8 0 0 1 10.3 3.5h3.4a1.8 1.8 0 0 1 1.8 1.8V7M3 12.5h18"/>',
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+};
+
+export function icon(name, cls = '') {
+  return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${P[name] || ''}</svg>`;
+}

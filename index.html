@@ -1,1 +1,146 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>عمرو أبو عياد</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0}</style></head><body><div style="text-align:center"><h1>عمرو أبو عياد</h1><p>الموقع قيد التحديث، قريباً</p></div></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>عمرو أبو عياد | محلل بيانات</title>
+<meta name="description" content="عمرو أبو عياد، محلل بيانات. لوحات مؤشرات وتحليل بيانات لجهات حكومية في قطاعَي العدل والنقل.">
+<meta name="author" content="عمرو هيثم أبو عياد">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark light">
+<link rel="canonical" href="https://amr-ayyad.github.io/">
+<meta property="og:type" content="profile">
+<meta property="og:url" content="https://amr-ayyad.github.io/">
+<meta property="og:site_name" content="عمرو أبو عياد">
+<meta property="og:title" content="عمرو أبو عياد | محلل بيانات">
+<meta property="og:description" content="أحوّل البيانات إلى قرارات. لوحات مؤشرات وتحليل بيانات لجهات حكومية في قطاعَي العدل والنقل.">
+<meta property="og:image" content="https://amr-ayyad.github.io/assets/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="عمرو هيثم أبو عياد، محلل بيانات">
+<meta property="og:locale" content="ar_SA">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://amr-ayyad.github.io/assets/og.jpg">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="modulepreload" href="js/scene.js">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function () {
+    var d = document.documentElement, t, l;
+    try { t = localStorage.getItem('theme'); l = localStorage.getItem('lang'); } catch (e) {}
+    d.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+    if (t === 'light') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f5f5f7');
+    if (l === 'en') { d.lang = 'en'; d.dir = 'ltr'; }
+  })();
+</script>
+<script type="module" src="js/app.js"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Person","name":"Amr Haitham Abu Ayyad","alternateName":"عمرو هيثم أبو عياد","jobTitle":"Data Analyst","url":"https://amr-ayyad.github.io/","email":"mailto:amrooabuayyad@gmail.com","image":"https://amr-ayyad.github.io/assets/og.jpg","knowsLanguage":["ar","en"],"knowsAbout":["Data analysis","Power BI","Metabase","Excel","Dashboards","Data visualization","Machine learning"]}
+</script>
+</head>
+<body class="intro">
+<div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="siri" id="siri" aria-hidden="true"></div>
+<div class="callouts" id="callouts" aria-hidden="true"></div>
+
+<header class="statusbar">
+  <span class="clock" id="clock" aria-hidden="true"></span>
+  <button class="island" id="island" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="islandMenu">
+    <span class="island-inner"><span class="ico" id="islandIco"></span><span class="txt" id="islandTxt"></span></span>
+  </button>
+  <div class="controls glass" role="group">
+    <button class="sw" id="swLang" type="button" role="switch" aria-checked="false">
+      <span class="sw-lbl" aria-hidden="true"><span>ع</span><span>EN</span></span>
+      <span class="knob" id="swLangK" aria-hidden="true">ع</span>
+    </button>
+    <button class="sw" id="swTheme" type="button" role="switch" aria-checked="true">
+      <span class="sw-lbl" aria-hidden="true" id="swThemeL"></span>
+      <span class="knob" id="swThemeK" aria-hidden="true"></span>
+    </button>
+  </div>
+</header>
+<nav class="island-menu" id="islandMenu"></nav>
+
+<main id="main">
+  <section class="hero" id="home" data-sec="home">
+    <div class="hero-text" id="heroText">
+      <p class="hello" data-t="hello"></p>
+      <h1 class="name grad" id="heroName"></h1>
+      <p class="role" id="heroRole"></p>
+      <p class="lead" id="heroLead"></p>
+      <p class="print-only print-contact"><bdi>amrooabuayyad@gmail.com</bdi> · <bdi>amr-ayyad.github.io</bdi></p>
+      <div class="cta" id="heroCta"></div>
+    </div>
+    <button class="skip glass" id="skip" type="button" data-t="skip"></button>
+    <a class="scroll-cue" href="#about" id="scrollCue" tabindex="-1" aria-hidden="true"><span></span></a>
+  </section>
+
+  <section class="statement" id="about" data-sec="about">
+    <div class="st-sticky">
+      <p class="eyebrow" data-nav="about"></p>
+      <p class="words" id="words"></p>
+    </div>
+  </section>
+
+  <section class="sec" id="numbers" data-sec="numbers">
+    <p class="eyebrow rv" data-t="numbersEyebrow"></p>
+    <h2 class="title rv" style="--i:1" data-t="numbersTitle"></h2>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section class="sec" id="work" data-sec="work">
+    <p class="eyebrow rv" data-t="workEyebrow"></p>
+    <h2 class="title rv" style="--i:1" data-t="workTitle"></h2>
+    <div class="jobs" id="jobs"></div>
+  </section>
+
+  <section class="sec" id="tools" data-sec="tools">
+    <div class="tools-grid">
+      <div class="tools-copy">
+        <p class="eyebrow rv" data-t="toolsEyebrow"></p>
+        <h2 class="title rv" style="--i:1" data-t="toolsTitle"></h2>
+        <p class="body rv" style="--i:2" data-t="toolsText"></p>
+        <ul class="print-only print-tools" id="printTools"></ul>
+      </div>
+      <div class="home rv" id="homeScreen" style="--i:1" aria-label="">
+        <div class="home-status" aria-hidden="true">
+          <span>9:41</span><span class="mini-island"></span>
+          <span class="sys"><span class="bars4"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i></span><span class="batt"><i></i></span></span>
+        </div>
+        <div class="home-grid" id="homeGrid"></div>
+        <div class="page-dots" aria-hidden="true"><i></i><i></i></div>
+        <div class="dock" id="dock"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="learn" data-sec="learn">
+    <p class="eyebrow rv" data-t="learnEyebrow"></p>
+    <h2 class="title rv" style="--i:1" data-t="learnTitle"></h2>
+    <div class="bento" id="bento"></div>
+  </section>
+
+  <section class="contact" id="contact" data-sec="contact">
+    <p class="eyebrow rv" data-t="contactEyebrow"></p>
+    <h2 class="title grad rv" style="--i:1" data-t="contactTitle"></h2>
+    <p class="sub rv" style="--i:2" data-t="contactText"></p>
+    <div class="cta rv" style="--i:3" id="contactCta"></div>
+    <a class="email rv" style="--i:4" id="emailLink" dir="ltr" href="#"></a>
+  </section>
+</main>
+<footer class="foot" id="foot"></footer>
+
+<noscript>
+  <div style="padding:40px 24px;text-align:center;font-family:system-ui,sans-serif">
+    <h1>عمرو هيثم أبو عياد · Amr Haitham Abu Ayyad</h1>
+    <p>محلل بيانات · Data Analyst</p>
+    <p><a href="mailto:amrooabuayyad@gmail.com">amrooabuayyad@gmail.com</a></p>
+  </div>
+</noscript>
+</body>
+</html>
