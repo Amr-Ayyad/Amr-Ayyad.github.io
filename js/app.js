@@ -280,19 +280,22 @@ addEventListener('keydown', (e) => {
 
 /* ───────── section rail: where you are on the page ───────── */
 const rail = $('#rail');
-let railIdx = -1, railP = -1, peekT = 0;
+let railIdx = -1, railP = -1;
 function renderRail() {
   rail.setAttribute('aria-label', u('sections'));
-  rail.innerHTML = '<span class="rail-track" aria-hidden="true"><i id="railFill"></i></span>' +
-    SECS.map((k) => `<a href="#${k}" data-k="${k}"><i aria-hidden="true"></i><span class="rail-tip">${esc(UI[lang].nav[k])}</span></a>`).join('');
+  rail.innerHTML = '<span class="rail-track" aria-hidden="true"><i id="railFill"></i></span><span class="rail-thumb" aria-hidden="true"></span>' +
+    SECS.map((k) => {
+      const w = esc(UI[lang].nav[k]);
+      return `<a href="#${k}" data-k="${k}"><i aria-hidden="true"></i><span class="rail-w" data-w="${w}">${w}</span></a>`;
+    }).join('');
   railIdx = -1;
   railP = -1;
-  updateSections(false);
+  updateSections();
 }
 // A section becomes current once its top passes 45% of the screen (the first one from the top of the page).
 // The island and the rail both follow it, and the rail's line fills from one section's dot to the next
 // as you read through it, so it always shows how far down the page you are.
-function updateSections(peek = true) {
+function updateSections() {
   const n = SECS.length, y = scrollY, line = innerHeight * 0.45;
   const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
   const at = [];
@@ -310,6 +313,7 @@ function updateSections(peek = true) {
   const idx = Math.min(n - 1, Math.floor(p + 1e-4));
   if (idx !== railIdx) {
     railIdx = idx;
+    rail.style.setProperty('--i', idx);
     rail.querySelectorAll('a').forEach((a, i) => {
       a.classList.toggle('cur', i === idx);
       a.classList.toggle('done', i < idx);
@@ -318,12 +322,6 @@ function updateSections(peek = true) {
     if (SECS[idx] !== curSec) {
       curSec = SECS[idx];
       if (iState === 'nav') islandSection();
-    }
-    // name the new section beside the rail for a moment
-    if (peek && ready) {
-      rail.classList.add('peek');
-      clearTimeout(peekT);
-      peekT = setTimeout(() => rail.classList.remove('peek'), 1600);
     }
   }
   const v = Math.min(1, p / (n - 1));
