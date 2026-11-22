@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122191121';
-import { icon } from './icons.js?v=20261122191121';
+import { CV, UI } from './data.js?v=20261122193136';
+import { icon } from './icons.js?v=20261122193136';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -496,8 +496,7 @@ let ticking = false;
 function onScroll() {
   const vh = innerHeight, y = scrollY;
   const k = Math.min(1, y / (vh * 0.85));
-  // behind the content the hero fades to a backdrop; a light page needs a little more of it to show
-  canvas.style.opacity = String(1 - (doc.dataset.theme === 'light' ? 0.5 : 0.84) * k);
+  // (behind the content the hero fades to a backdrop: the scene eases the canvas after the scroll)
   scene?.setScroll(k);
   body.classList.toggle('scrolled', y > 40);
   body.classList.toggle('rail-on', y > vh * 0.25);
@@ -537,7 +536,7 @@ onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js?v=20261122191121')
+import('./scene.js?v=20261122193136')
   .then((m) => {
     scene = m.createScene({
       canvas,
@@ -546,7 +545,9 @@ import('./scene.js?v=20261122191121')
       theme,
       lang,
       reduced,
-      getReserve: () => $('#heroText').offsetHeight + 40,
+      // room under the figure on phones: everything from just above the hero text to the canvas bottom
+      // (the canvas covers the tallest viewport, so this follows where the text really is)
+      getReserve: () => canvas.clientHeight - ($('#heroText').getBoundingClientRect().top + scrollY) + 4,
       onPhase: (name) => {
         if (name === 'formed') $('#siri').classList.remove('on');
         if (name === 'ready') onReady();

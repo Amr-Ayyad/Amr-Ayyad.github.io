@@ -192,11 +192,11 @@ void main(){
     float edgeFade = 1.0;
     if (u < A) {
       // raw data: a wide, uneven cloud that is drawn in towards the entry point
-      float q = u / A, qa = pow(q, 1.6);
+      float q = u / A, qa = pow(max(q, 0.0), 1.6);
       float dist = 0.1 + aS.x * uCloud;
       float spread = 0.15 + aS.x * uCloud * 0.46;
       vec3 S = uE + vec3(-dist, aS.y * spread, aS.z * spread * 0.6);
-      float amp = pow(1.0 - q, 1.4) * (0.12 + r2 * 0.2);
+      float amp = pow(max(1.0 - q, 0.0), 1.4) * (0.12 + r2 * 0.2);
       vec3 wob = vec3(sin(uTime * (0.7 + r1) + r2 * 40.0), cos(uTime * (0.6 + r2) + r1 * 33.0), sin(uTime * 0.5 + r1 * 21.0 + r2 * 9.0));
       fp = mix(S, uE, qa) + wob * amp;
       edgeFade = smoothstep(0.0, 0.08, q);
@@ -263,7 +263,7 @@ varying float vA;
 void main(){
   float d = length(gl_PointCoord - 0.5);
   if (d > 0.5) discard;
-  float a = clamp(pow(1.0 - d * 2.0, uSharp) * vA, 0.0, 1.0);
+  float a = clamp(pow(max(1.0 - d * 2.0, 0.0), uSharp) * vA, 0.0, 1.0);
   gl_FragColor = uLight < 0.5 ? glow(vCol * a) : vec4(vCol, a);
 }`;
 
@@ -510,7 +510,7 @@ varying vec3 vC;
 void main(){
   float d = length(gl_PointCoord - 0.5) * 2.0;
   if (d > 1.0) discard;
-  float a = (exp(-d * d * 7.0) * 0.8 + smoothstep(0.16, 0.0, d) * 0.6) * uA;
+  float a = (exp(-d * d * 7.0) * 0.8 + (1.0 - smoothstep(0.0, 0.16, d)) * 0.6) * uA;
   gl_FragColor = uLight < 0.5 ? glow(vC * a) : vec4(vC, a * 0.8);
 }`;
 
@@ -1017,9 +1017,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const a = toFlow([-1.3, 0.3, 0]), b = toFlow([1.14, 0.3, 0]);
     return (a[1] + b[1]) / 2;
   }
-  function resize() {
-    W = canvas.clientWidth || innerWidth;
-    H = canvas.clientHeight || innerHeight;
+  function resize(force) {
+    const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;
+    if (force !== true && w === W && h === H) return;
+    W = w; H = h;
     dpr = Math.min(devicePixelRatio || 1, small ? 2 : 1.75);
     renderer.setPixelRatio(dpr);
     renderer.setSize(W, H, false);
@@ -1069,17 +1070,21 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   }
 
   // ── timeline ──
-  let T = reduced ? T_END : 0, speed = 1, time = 0, last = performance.now(), scrollK = 0, frameNo = 0, freezeT = null;
+  let T = reduced ? T_END : 0, speed = 1, time = 0, last = performance.now(), scrollK = 0, sk = 0, canvasOp = -1, frameNo = 0, freezeT = null;
   const fired = {};
   const fire = (name) => { if (!fired[name]) { fired[name] = true; onPhase && onPhase(name); } };
   const v3 = new THREE.Vector3();
   const toScreen = (p) => { v3.set(p[0], p[1], p[2]).applyMatrix4(flow.matrixWorld).project(camera); return [(v3.x * 0.5 + 0.5) * W, (-v3.y * 0.5 + 0.5) * H]; };
 
   function updateCallouts(dt) {
-    const vis = scrollK < 0.35;
-    calloutsEl.style.opacity = vis ? String(1 - scrollK / 0.35) : '0';
+    // on phones the labels sit right above the hero text: they ride up with the page as it scrolls,
+    // so the text never slides under them, and fade out quickly
+    const fadeK = portrait ? 0.2 : 0.35;
+    const vis = scrollK < fadeK;
+    calloutsEl.style.opacity = vis ? String(1 - scrollK / fadeK) : '0';
+    calloutsEl.style.transform = portrait && vis && scrollY > 0 ? `translate3d(0, ${-Math.round(scrollY)}px, 0)` : '';
     // fading labels stop taking clicks and focus before they disappear
-    calloutsEl.classList.toggle('off', scrollK > 0.22);
+    calloutsEl.classList.toggle('off', scrollK > fadeK * 0.6);
     if (!vis || !body) return;
     const [xX, xY] = toScreen(X);
     const live = [];
@@ -1172,6 +1177,12 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     time += dt;
     first = false;
     if (freezeT === null) T += Math.min(rawDt, 0.25) * speed; else T = freezeT;
+    // the move from the front of the page to the backdrop eases after the scroll instead of tracking each
+    // scroll event, and the canvas fades with it
+    sk = reduced ? scrollK : sk + (scrollK - sk) * (1 - Math.exp(-Math.min(rawDt, 0.25) * 7));
+    if (Math.abs(sk - scrollK) < 0.0005) sk = scrollK;
+    const op = Math.round((1 - (light ? 0.5 : 0.84) * ease(sk)) * 1000) / 1000;
+    if (op !== canvasOp) { canvasOp = op; canvas.style.opacity = String(op); }
     // hold before the morph until the brain has arrived (slow networks); with reduced motion
     // the clock stays at the end, so the finished picture appears as soon as the brain loads
     if (!body && !bodyFailed && T > T_MORPH - 0.05 && freezeT === null && !reduced) T = T_MORPH - 0.05;
@@ -1210,8 +1221,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const follow = 1 - Math.exp(-Math.min(rawDt, 0.25) * 3.2);
     smx += (mx - smx) * follow; smy += (my - smy) * follow;
     const idle = reduced ? 0 : Math.sin(time * 0.23) * 0.06;
-    flow.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
-    if (portrait) flow.scale.set(cur.s, cur.s * side, cur.s); else flow.scale.set(cur.s * side, cur.s, cur.s);
+    // going into the backdrop the brain rises a little and steps back
+    const back = ease(sk), fs = cur.s * (1 - 0.1 * back);
+    flow.position.set(cur.x, cur.y + back * 0.9 * cur.s, 0);
+    if (portrait) flow.scale.set(fs, fs * side, fs); else flow.scale.set(fs * side, fs, fs);
     // the intro plays face-on and calm; the brain starts following the pointer only once it has formed
     const tk = tilt * ease(clamp01((T - T_FORMED + 0.5) / 1.4));
     flow.rotation.set(smy * 0.5 * tk, smx * 1.08 * tk + idle, cur.rot);

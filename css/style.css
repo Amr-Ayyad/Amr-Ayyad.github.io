@@ -91,13 +91,15 @@ body { -webkit-user-select: none; user-select: none; }
 bdi { unicode-bidi: isolate; }
 
 /* ── Backdrop: ambient light + WebGL ── */
-.ambient { position: fixed; inset: 0; z-index: -3; overflow: hidden; pointer-events: none; }
+/* the fixed backdrops cover the tallest viewport (address bar hidden), so nothing uncovered shows at the
+   bottom while a phone's address bar slides away, and the canvas never has to resize mid-scroll */
+.ambient { position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100lvh; z-index: -3; overflow: hidden; pointer-events: none; }
 .ambient i { position: absolute; border-radius: 50%; will-change: transform; animation: drift 28s ease-in-out infinite alternate; }
 .ambient i:nth-child(1) { width: 78vmax; height: 78vmax; top: -34vmax; inset-inline-start: -26vmax; background: radial-gradient(closest-side, var(--blob1), transparent); }
 .ambient i:nth-child(2) { width: 84vmax; height: 84vmax; bottom: -44vmax; inset-inline-end: -30vmax; background: radial-gradient(closest-side, var(--blob2), transparent); animation-duration: 34s; }
 .ambient i:nth-child(3) { width: 52vmax; height: 52vmax; top: 30%; left: 30%; background: radial-gradient(closest-side, var(--blob3), transparent); animation-duration: 24s; }
 @keyframes drift { to { transform: translate3d(5vmax, 4vmax, 0) scale(1.1); } }
-#gl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; display: block; }
+#gl { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100lvh; z-index: -1; pointer-events: none; display: block; }
 
 /* intro glow around the screen edge */
 .siri { position: fixed; inset: 0; z-index: 70; pointer-events: none; opacity: 0; transition: opacity 1.4s ease; }
@@ -120,52 +122,53 @@ bdi { unicode-bidi: isolate; }
    mouse (app.js), so the edges glint as the pointer moves. */
 .glass {
   position: relative; isolation: isolate;
-  background: linear-gradient(150deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 36%, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, .04)), var(--glass);
+  background: linear-gradient(150deg, rgba(125, 225, 245, .11), rgba(125, 225, 245, 0) 36%, rgba(34, 211, 238, 0) 70%, rgba(34, 211, 238, .06)), var(--glass);
   -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--stroke);
+  border: 1px solid rgba(125, 225, 245, .12);
   box-shadow: var(--shadow),
-    inset 0 1px 0 var(--hi),
-    inset 0 4px 2px -3px rgba(255, 255, 255, .3),
-    inset 0 16px 24px -16px rgba(255, 255, 255, .3),
-    inset 0 -16px 26px -16px rgba(130, 225, 255, .24),
-    inset 16px 0 24px -18px rgba(255, 255, 255, .15),
-    inset -16px 0 24px -18px rgba(255, 255, 255, .1),
-    inset 0 -4px 2px -3px rgba(170, 235, 255, .22),
-    inset 0 -1px 0 rgba(255, 255, 255, .1);
+    inset 0 1px 0 rgba(180, 242, 255, .38),
+    inset 0 4px 2px -3px rgba(165, 243, 252, .3),
+    inset 0 16px 24px -16px rgba(125, 225, 245, .3),
+    inset 0 -16px 26px -16px rgba(34, 211, 238, .26),
+    inset 16px 0 24px -18px rgba(125, 225, 245, .16),
+    inset -16px 0 24px -18px rgba(94, 227, 247, .11),
+    inset 0 -4px 2px -3px rgba(94, 227, 247, .24),
+    inset 0 -1px 0 rgba(125, 225, 245, .12);
 }
-/* the rim */
+/* the rim: aqua glass, brightest where it faces the light */
 .glass::before {
   content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; z-index: 1; padding: 1.6px;
   background: conic-gradient(from var(--la, 315deg),
-    rgba(255, 255, 255, .85), rgba(185, 240, 255, .5) 7%, rgba(255, 255, 255, .07) 20%, rgba(255, 238, 200, .16) 36%,
-    rgba(255, 255, 255, .5) 50%, rgba(160, 232, 255, .3) 57%, rgba(255, 255, 255, .06) 72%, rgba(255, 255, 255, .45) 92%, rgba(255, 255, 255, .85));
+    rgba(200, 248, 255, .9), rgba(94, 227, 247, .6) 7%, rgba(61, 211, 242, .08) 20%, rgba(125, 211, 252, .2) 36%,
+    rgba(165, 243, 252, .55) 50%, rgba(34, 211, 238, .32) 57%, rgba(61, 211, 242, .06) 72%, rgba(165, 243, 252, .5) 92%, rgba(200, 248, 255, .9));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   opacity: .95;
 }
 .glass::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(255, 255, 255, .11), transparent 46%);
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(125, 225, 245, .12), transparent 46%);
   opacity: 0; transition: opacity .5s;
 }
 .glass:hover::after { opacity: 1; }
 :root[data-theme='light'] .glass {
-  background: linear-gradient(150deg, rgba(255, 255, 255, .75), rgba(255, 255, 255, 0) 42%), var(--glass);
+  background: linear-gradient(150deg, rgba(236, 254, 255, .85), rgba(236, 254, 255, 0) 42%, rgba(165, 243, 252, 0) 70%, rgba(165, 243, 252, .18)), var(--glass);
+  border-color: rgba(8, 145, 178, .14);
   box-shadow: var(--shadow),
-    inset 0 1px 0 var(--hi),
-    inset 0 14px 22px -16px rgba(255, 255, 255, .95),
-    inset 0 -14px 24px -16px rgba(14, 116, 144, .1),
-    inset 14px 0 22px -18px rgba(255, 255, 255, .7),
-    inset -14px 0 22px -18px rgba(255, 255, 255, .5),
-    inset 0 -1px 0 rgba(0, 0, 0, .03);
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 14px 22px -16px rgba(207, 250, 254, .95),
+    inset 0 -14px 24px -16px rgba(8, 145, 178, .16),
+    inset 14px 0 22px -18px rgba(165, 243, 252, .55),
+    inset -14px 0 22px -18px rgba(165, 243, 252, .4),
+    inset 0 -4px 2px -3px rgba(34, 211, 238, .18);
 }
 :root[data-theme='light'] .glass::before {
   background: conic-gradient(from var(--la, 315deg),
-    #fff, rgba(255, 255, 255, .9) 8%, rgba(150, 200, 220, .25) 22%, rgba(14, 116, 144, .12) 36%,
-    rgba(255, 255, 255, .85) 50%, rgba(120, 200, 230, .3) 58%, rgba(14, 116, 144, .1) 74%, rgba(255, 255, 255, .8) 92%, #fff);
+    #fff, rgba(165, 243, 252, .95) 8%, rgba(34, 211, 238, .35) 22%, rgba(8, 145, 178, .16) 36%,
+    rgba(207, 250, 254, .9) 50%, rgba(34, 211, 238, .4) 58%, rgba(8, 145, 178, .14) 74%, rgba(165, 243, 252, .85) 92%, #fff);
   opacity: 1;
 }
-:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(255, 255, 255, .8), transparent 46%); }
+:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(207, 250, 254, .8), transparent 46%); }
 
 /* ── Status bar · Dynamic Island · switches ── */
 .statusbar {
