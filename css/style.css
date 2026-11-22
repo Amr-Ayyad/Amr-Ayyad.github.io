@@ -434,15 +434,47 @@ html[lang='ar'] .num { margin-inline-start: 0; }
 .seals > span { opacity: 0; transform: scale(.5); transition: opacity .5s, transform .6s var(--spring); transition-delay: calc(.4s + var(--j) * 70ms); }
 .stat.in .seals > span { opacity: 1; transform: none; }
 
-/* squircle icons */
+/* squircle icons: Liquid Glass. A tinted glass body, light that bounces up from the bottom edge,
+   a thin rim that catches the light on the side facing it (and faintly on the far side), a soft
+   sheen, and a frosted glyph floating above. --la / --gx / --gy follow the pointer slowly (app.js). */
 .squircle {
-  --s: 56px; position: relative; flex-shrink: 0; width: var(--s); height: var(--s); border-radius: 23%;
+  --s: 56px; --rim: max(1px, calc(var(--s) * .022));
+  position: relative; isolation: isolate; flex-shrink: 0; width: var(--s); height: var(--s); border-radius: 23%;
   display: grid; place-items: center; color: #fff; font-size: calc(var(--s) * .5);
   background: linear-gradient(155deg, var(--g1), var(--g2));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .12), 0 10px 22px -12px var(--g2);
+  background:
+    radial-gradient(110% 70% at 50% 118%, color-mix(in srgb, var(--g1) 55%, #fff) 0%, transparent 62%),
+    linear-gradient(155deg, color-mix(in srgb, var(--g1) 86%, transparent), color-mix(in srgb, var(--g2) 94%, transparent));
+  box-shadow:
+    inset 0 calc(var(--s) * -.05) calc(var(--s) * .12) color-mix(in srgb, var(--g2) 50%, transparent),
+    inset 0 calc(var(--s) * .04) calc(var(--s) * .1) rgba(255, 255, 255, .22),
+    0 calc(var(--s) * .16) calc(var(--s) * .32) calc(var(--s) * -.17) var(--g2);
+  transition: transform .55s var(--spring), filter .35s ease;
 }
-.squircle::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 52%); }
-.squircle .ic { position: relative; z-index: 1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .18)); }
+/* the rim: brightest where the light hits, a weaker reflection on the opposite edge */
+.squircle::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: var(--rim); pointer-events: none; z-index: 2;
+  background: conic-gradient(from var(--la, 315deg), rgba(255, 255, 255, 1), rgba(255, 255, 255, .34) 11%, rgba(255, 255, 255, .04) 27%, rgba(255, 255, 255, .32) 50%, rgba(255, 255, 255, .04) 73%, rgba(255, 255, 255, .34) 89%, rgba(255, 255, 255, 1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* the sheen on the glass, drifting with the light */
+.squircle::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(80% 55% at var(--gx, 30%) var(--gy, 6%), rgba(255, 255, 255, .5), rgba(255, 255, 255, .12) 50%, transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, .16), transparent 46%);
+}
+/* the glyph: frosted white, lifted off the glass by a tinted shadow */
+.squircle .ic {
+  position: relative; z-index: 1; color: rgba(255, 255, 255, .97);
+  filter: drop-shadow(0 calc(var(--s) * .025) calc(var(--s) * .04) color-mix(in srgb, var(--g2) 65%, #000)) drop-shadow(0 0 calc(var(--s) * .08) rgba(255, 255, 255, .28));
+}
+/* touch: the glass gives under the finger and springs back; mouse: it lifts towards you */
+@media (hover: hover) {
+  .app:hover .squircle, .seals > span:hover .squircle, .row:hover .squircle { transform: translateY(-2px) scale(1.07); filter: brightness(1.07) saturate(1.06); }
+}
+.app:active .squircle, .seals > span:active .squircle, .row:active .squircle { transform: scale(.92); filter: brightness(1.14) saturate(1.08); transition-duration: .16s, .16s; }
 .squircle.sm { --s: 40px; }
 .squircle.xs { --s: 32px; border-radius: 9px; }
 .squircle.mini { --s: 30px; border-radius: 9px; }

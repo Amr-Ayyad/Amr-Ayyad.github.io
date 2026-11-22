@@ -278,6 +278,35 @@ addEventListener('keydown', (e) => {
   if (!ready && ['Escape', 'Enter', ' ', 'ArrowDown', 'PageDown'].includes(e.key)) scene?.skip();
 });
 
+/* ───────── Liquid Glass light ─────────
+   The icons' rim and sheen face a light that follows the mouse, or drifts as you scroll on touch
+   screens. It eases slowly towards its target, so it never jumps. */
+(() => {
+  if (reduced) return;
+  const st = doc.style;
+  let tx = -0.6, ty = -0.8, x = tx, y = ty, raf = 0, last = 0; // light from the top left
+  const step = (now = performance.now()) => {
+    const k = last ? 1 - Math.exp(-Math.min(0.1, (now - last) / 1000) * 2.6) : 1;
+    last = now;
+    x += (tx - x) * k; y += (ty - y) * k;
+    st.setProperty('--la', `${((Math.atan2(x, -y) * 180) / Math.PI).toFixed(1)}deg`);
+    st.setProperty('--gx', `${(32 + x * 24).toFixed(1)}%`);
+    st.setProperty('--gy', `${(8 + y * 10).toFixed(1)}%`);
+    raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.003 ? requestAnimationFrame(step) : (last = 0);
+  };
+  const go = () => { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } };
+  addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    tx = (e.clientX / innerWidth) * 2 - 1; ty = (e.clientY / innerHeight) * 2 - 1; go();
+  }, { passive: true });
+  if (matchMedia('(hover: none)').matches) {
+    addEventListener('scroll', () => { const k = scrollY / innerHeight; tx = Math.sin(k * 1.1) * 0.85; ty = -0.75 + Math.cos(k * 0.8) * 0.2; go(); }, { passive: true });
+  }
+  // iOS only applies :active (the press on the glass) when the page listens for touches
+  document.addEventListener('touchstart', () => {}, { passive: true });
+  step();
+})();
+
 /* ───────── section rail: where you are on the page ───────── */
 const rail = $('#rail');
 const railBarMQ = matchMedia('(max-width: 1239px)');
