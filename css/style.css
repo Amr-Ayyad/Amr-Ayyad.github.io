@@ -82,6 +82,11 @@ button { font: inherit; color: inherit; }
 img, svg { display: block; }
 .ic { width: 1em; height: 1em; flex-shrink: 0; }
 ::selection { background: rgba(61, 211, 242, .32); }
+/* clicks and taps never paint a highlight: no text selection on tap or double-click, no tap flash
+   (the email address stays selectable so it can still be copied by hand) */
+html { -webkit-tap-highlight-color: transparent; }
+body { -webkit-user-select: none; user-select: none; }
+#emailLink { -webkit-user-select: text; user-select: text; }
 :focus-visible { outline: 2px solid var(--glacier); outline-offset: 3px; border-radius: 10px; }
 bdi { unicode-bidi: isolate; }
 

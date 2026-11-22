@@ -13,8 +13,8 @@ export const CV = {
 
   // نص النبذة: الكلمات بين نجمتين *هكذا* تظهر بلون مميز
   statement: {
-    ar: 'أنا محلل بيانات، أحوّل الأرقام الخام إلى لوحات مؤشرات تصنع *قرارات* *واضحة.* حلّلت أكثر من *2.5* *مليون* *سجل* لجهات حكومية في قطاعَي العدل والنقل، وأدرس علم البيانات في مسار *الذكاء* *الاصطناعي.*',
-    en: 'I’m a data analyst who turns raw numbers into dashboards that drive *clear* *decisions.* I’ve analyzed over *2.5M* *records* for government entities in justice and transport, and I’m studying Data Science on the *AI* *track.*',
+    ar: 'أنا محلل بيانات، أحوّل الأرقام الخام إلى لوحات مؤشرات تصنع *قرارات* *واضحة.* حلّلت أكثر من *2.5* *مليون* *سجل* لجهات حكومية في قطاعَي العدل والنقل، وأحمل بكالوريوس علم البيانات في مسار *الذكاء* *الاصطناعي.*',
+    en: 'I’m a data analyst who turns raw numbers into dashboards that drive *clear* *decisions.* I’ve analyzed over *2.5M* *records* for government entities in justice and transport, and I hold a B.Sc. in Data Science on the *AI* *track.*',
   },
 
   stats: [
@@ -126,7 +126,7 @@ export const CV = {
   callouts: {
     // each label is also a link: "to" is the section it opens
     raw: { to: 'numbers', t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'بيانات خام حلّلتها', en: 'raw data I analyzed' } },
-    brain: { to: 'learn', t: { ar: 'تحليل وذكاء اصطناعي', en: 'Analysis & AI' }, s: { ar: 'دراستي في علم البيانات', en: 'My Data Science studies' } },
+    brain: { to: 'learn', t: { ar: 'تحليل وذكاء اصطناعي', en: 'Analysis & AI' }, s: { ar: 'بكالوريوس علم البيانات', en: 'B.Sc. in Data Science' } },
     o1: { to: 'work', t: { ar: 'لوحات مؤشرات', en: 'Dashboards' }, s: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' } },
     o2: { to: 'tools', t: { ar: 'أدواتي', en: 'Toolkit' }, s: { ar: 'Excel\u00a0· قواعد البيانات', en: 'Excel\u00a0· Databases' } },
     o3: { to: 'about', t: { ar: 'قرارات واضحة', en: 'Clear decisions' }, s: { ar: 'نبذة عني', en: 'About me' } },

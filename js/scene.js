@@ -969,6 +969,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
 
   // ── input ──
   let mx = 0, my = 0, smx = 0, smy = 0;
+  const tilt = reduced ? 0.4 : 1; // how far the figure turns towards the pointer
   addEventListener('pointermove', (e) => { mx = (e.clientX / innerWidth) * 2 - 1; my = (e.clientY / innerHeight) * 2 - 1; }, { passive: true });
 
   // ── timeline ──
@@ -1108,11 +1109,13 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     // layout easing and pose
     const k = 1 - Math.pow(0.0015, dt);
     cur.x += (tgt.x - cur.x) * k; cur.y += (tgt.y - cur.y) * k; cur.s += (tgt.s - cur.s) * k; cur.rot += (tgt.rot - cur.rot) * k;
-    smx += (mx - smx) * Math.min(1, dt * 3); smy += (my - smy) * Math.min(1, dt * 3);
+    // the figure follows the pointer slowly (about a second to catch up), never snapping
+    const follow = 1 - Math.exp(-dt * 1.3);
+    smx += (mx - smx) * follow; smy += (my - smy) * follow;
     const idle = reduced ? 0 : Math.sin(time * 0.23) * 0.06;
     flow.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
     if (portrait) flow.scale.set(cur.s, cur.s * side, cur.s); else flow.scale.set(cur.s * side, cur.s, cur.s);
-    flow.rotation.set(smy * 0.04, smx * 0.08 + idle, cur.rot);
+    flow.rotation.set(smy * 0.11 * tilt, smx * 0.24 * tilt + idle, cur.rot);
     flow.updateMatrixWorld();
     uniforms.uFlowM.value.copy(flow.matrixWorld);
     uniforms.uBrainM.value.copy(brainG.matrixWorld);
@@ -1145,8 +1148,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uNetM.value.copy(netGroup.matrixWorld);
     netMat.opacity = pal.netOp * netFade * (1 - clamp01(morph * 1.6));
 
-    camera.position.x = smx * 0.18;
-    camera.position.y = -smy * 0.1;
+    camera.position.x = smx * 0.3 * tilt;
+    camera.position.y = -smy * 0.16 * tilt;
     camera.lookAt(0, 0, 0);
     uniforms.uCam.value.copy(camera.position);
     renderer.render(scene, camera);
