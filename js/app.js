@@ -20,6 +20,7 @@ const sq = (ic, g, cls = '') => `<span class="squircle ${cls}" style="--g1:${g[0
 const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
 
 const SEC_ICON = { home: 'person', about: 'quote', numbers: 'chart', work: 'case', tools: 'grid', learn: 'cap', contact: 'mail' };
+const SECS = Object.keys(SEC_ICON);
 const SPARK = [0.2, 0.28, 0.24, 0.36, 0.32, 0.46, 0.42, 0.55, 0.5, 0.64, 0.6, 0.74, 0.7, 0.86, 0.82, 1];
 const STAT_ICON = [null, 'gauge', 'scale', 'seal'];
 
@@ -145,6 +146,7 @@ function renderAll() {
   renderLearn();
   renderContact();
   renderMenu();
+  renderRail();
   observeReveals();
 }
 
@@ -276,17 +278,60 @@ addEventListener('keydown', (e) => {
   if (!ready && ['Escape', 'Enter', ' ', 'ArrowDown', 'PageDown'].includes(e.key)) scene?.skip();
 });
 
-const secIO = new IntersectionObserver(
-  (entries) => {
-    for (const e of entries) {
-      if (!e.isIntersecting) continue;
-      curSec = e.target.dataset.sec;
+/* ───────── section rail: where you are on the page ───────── */
+const rail = $('#rail');
+let railIdx = -1, railP = -1, peekT = 0;
+function renderRail() {
+  rail.setAttribute('aria-label', u('sections'));
+  rail.innerHTML = '<span class="rail-track" aria-hidden="true"><i id="railFill"></i></span>' +
+    SECS.map((k) => `<a href="#${k}" data-k="${k}"><i aria-hidden="true"></i><span class="rail-tip">${esc(UI[lang].nav[k])}</span></a>`).join('');
+  railIdx = -1;
+  railP = -1;
+  updateSections(false);
+}
+// A section becomes current once its top passes 45% of the screen (the first one from the top of the page).
+// The island and the rail both follow it, and the rail's line fills from one section's dot to the next
+// as you read through it, so it always shows how far down the page you are.
+function updateSections(peek = true) {
+  const n = SECS.length, y = scrollY, line = innerHeight * 0.45;
+  const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  const at = [];
+  for (let i = 0; i < n; i++) {
+    const el = document.getElementById(SECS[i]);
+    const v = i === 0 || !el ? 0 : Math.min(max, el.getBoundingClientRect().top + y - line);
+    at.push(Math.max(v, i ? at[i - 1] : 0));
+  }
+  let p = 0;
+  for (let i = n - 1; i >= 0; i--) {
+    if (y < at[i] - 0.5) continue;
+    p = i < n - 1 ? i + Math.min(1, (y - at[i]) / Math.max(1, at[i + 1] - at[i])) : i;
+    break;
+  }
+  const idx = Math.min(n - 1, Math.floor(p + 1e-4));
+  if (idx !== railIdx) {
+    railIdx = idx;
+    rail.querySelectorAll('a').forEach((a, i) => {
+      a.classList.toggle('cur', i === idx);
+      a.classList.toggle('done', i < idx);
+      if (i === idx) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
+    });
+    if (SECS[idx] !== curSec) {
+      curSec = SECS[idx];
       if (iState === 'nav') islandSection();
     }
-  },
-  { rootMargin: '-45% 0px -50% 0px' },
-);
-$$('[data-sec]').forEach((s) => secIO.observe(s));
+    // name the new section beside the rail for a moment
+    if (peek && ready) {
+      rail.classList.add('peek');
+      clearTimeout(peekT);
+      peekT = setTimeout(() => rail.classList.remove('peek'), 1600);
+    }
+  }
+  const v = Math.min(1, p / (n - 1));
+  if (Math.abs(v - railP) > 0.0005) {
+    railP = v;
+    document.getElementById('railFill').style.transform = `scaleY(${v.toFixed(4)})`;
+  }
+}
 
 /* ───────── status bar clock ───────── */
 function tick() {
@@ -377,7 +422,9 @@ function onScroll() {
   canvas.style.opacity = String(1 - 0.84 * k);
   scene?.setScroll(k);
   body.classList.toggle('scrolled', y > 40);
+  body.classList.toggle('rail-on', y > vh * 0.25);
   if (!ready && y > 30) scene?.skip();
+  updateSections();
   // scroll-lit statement
   const r = statement.getBoundingClientRect();
   const span = Math.max(1, r.height - vh);

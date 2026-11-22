@@ -185,6 +185,52 @@ bdi { unicode-bidi: isolate; }
 .island-menu .ic { width: 21px; height: 21px; }
 .island-menu a:last-child:nth-child(3n + 1) { grid-column: 2; }
 
+/* ── Section rail: the page's sections as dots on the right edge; the current one is a capsule,
+   the line fills down as you read, and each dot is a link (its name shows beside it) ── */
+.rail {
+  position: fixed; z-index: 55; top: 50%; right: max(12px, env(safe-area-inset-right));
+  display: flex; flex-direction: column; align-items: center; width: 26px; padding: 7px 0; border-radius: 13px;
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translate(14px, -50%);
+  transition: opacity .5s var(--out), transform .6s var(--out), visibility 0s linear .6s;
+}
+/* it slides in once you start scrolling, as the hero's labels fade out */
+body.rail-on:not(.intro) .rail { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(-50%); transition-delay: 0s; }
+.rail a { position: relative; display: grid; place-items: center; width: 26px; height: 22px; -webkit-tap-highlight-color: transparent; }
+.rail a::after { content: ''; position: absolute; inset: 0 -6px; }
+.rail a > i {
+  position: relative; z-index: 1; width: 6px; height: 6px; border-radius: 3px; background: var(--faint);
+  transition: height .5s var(--spring), background-color .3s, box-shadow .3s, opacity .3s;
+}
+.rail a.done > i { background: var(--accent); opacity: .6; }
+.rail a.cur > i { height: 18px; background: var(--grad-v); opacity: 1; box-shadow: 0 0 12px -2px var(--accent); }
+.rail a:hover > i { background: var(--accent); opacity: 1; }
+.rail a.cur:hover > i { background: var(--grad-v); }
+.rail a:focus-visible { outline: none; }
+.rail a:focus-visible > i { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.rail-track { position: absolute; top: 18px; bottom: 18px; left: 50%; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--sep); overflow: hidden; pointer-events: none; }
+.rail-track i { position: absolute; inset: 0; background: var(--grad-v); opacity: .55; transform-origin: 50% 0; transform: scaleY(0); }
+.rail-tip {
+  position: absolute; top: 50%; right: calc(100% + 12px);
+  padding: 5px 11px 6px; border-radius: 999px; white-space: nowrap;
+  font-size: 12.5px; font-weight: 600; line-height: 1.2; letter-spacing: 0; color: var(--text);
+  background: rgba(28, 28, 30, .9); border: 1px solid var(--stroke);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, .7), inset 0 1px 0 var(--hi);
+  opacity: 0; transform: translate(8px, -50%); pointer-events: none;
+  transition: opacity .25s ease, transform .45s var(--spring);
+}
+:root[data-theme='light'] .rail-tip { background: rgba(255, 255, 255, .94); box-shadow: 0 12px 28px -14px rgba(28, 38, 66, .35), inset 0 1px 0 #fff; }
+@media (hover: hover) { .rail a:hover .rail-tip { opacity: 1; transform: translate(0, -50%); } }
+.rail a:focus-visible .rail-tip, .rail.peek a.cur .rail-tip { opacity: 1; transform: translate(0, -50%); }
+@media (max-width: 760px) {
+  .rail { right: max(4px, env(safe-area-inset-right)); width: 16px; padding: 5px 0; border-radius: 8px; }
+  .rail a { width: 16px; height: 21px; }
+  .rail a::after { inset: -1px -6px -1px -12px; }
+  .rail a > i { width: 5px; height: 5px; border-radius: 2.5px; }
+  .rail a.cur > i { height: 14px; }
+  .rail-track { top: 15.5px; bottom: 15.5px; width: 1.5px; margin-left: -.75px; }
+  .rail-tip { right: calc(100% + 9px); font-size: 12px; padding: 4px 10px 5px; }
+}
+
 .controls {
   justify-self: end; direction: ltr; display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 999px;
 }
@@ -304,6 +350,8 @@ a.co:active { box-shadow: inset 0 1px 0 var(--hi), 0 0 0 1px var(--accent); }
 /* ── Statement (scroll-lit words) ── */
 .statement { position: relative; height: 230vh; }
 .st-sticky { position: sticky; top: 0; height: 100vh; height: 100svh; display: flex; flex-direction: column; justify-content: center; width: min(1180px, 100%); margin: 0 auto; padding: 80px 24px 40px; }
+/* keep the content clear of the section rail on the right edge */
+@media (min-width: 761px) { .sec, .st-sticky { width: min(1180px, calc(100% - 44px)); } }
 .words { font-size: clamp(27px, 4.1vw, 58px); font-weight: 700; line-height: 1.32; max-width: 26ch; }
 html[lang='ar'] .words { line-height: 1.55; max-width: 24ch; }
 html[lang='en'] .words { letter-spacing: -.028em; }
@@ -527,7 +575,7 @@ html[dir='rtl'] .edu { background: radial-gradient(80% 90% at 0% 0%, rgba(103, 2
   :root, :root[data-theme='light'] { --bg: #fff; --text: #111; --text-2: #222; --muted: #555; --stroke: #ddd; --sep: #e5e5e5; --glass: #fff; --glass-2: #f4f4f4; --accent: #0e7490; }
   :root, :root[data-theme] { color-scheme: light !important; }
   html, body { background: #fff !important; color: #111; }
-  .ambient, #gl, .siri, .callouts, .statusbar, .island-menu, .skip, .scroll-cue, .home, .spark, .seals, .stat-ic { display: none !important; }
+  .ambient, #gl, .siri, .callouts, .statusbar, .island-menu, .rail, .skip, .scroll-cue, .home, .spark, .seals, .stat-ic { display: none !important; }
   .rv, .hero-text > * { opacity: 1 !important; transform: none !important; filter: none !important; }
   .glass { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border: 1px solid #ddd; }
   .glass::before, .glass::after { display: none; }
