@@ -122,14 +122,14 @@ export const CV = {
     { icon: 'sigma', grad: ['#c9ced6', '#6b7280'], title: { ar: 'التحليل الإحصائي باستخدام SPSS', en: 'Statistical Analysis with SPSS' }, note: { ar: 'قيد الدراسة', en: 'In progress' } },
   ],
 
-  // البطاقات التي تظهر حول الإنسان ثلاثي الأبعاد في الواجهة
+  // البطاقات التي تظهر حول الدماغ ثلاثي الأبعاد في الواجهة: كل فص مهارة
   callouts: {
     // each label is also a link: "to" is the section it opens
-    brain: { to: 'learn', t: { ar: 'ذكاء اصطناعي', en: 'Artificial Intelligence' }, s: { ar: 'دراستي وشهاداتي', en: 'Studies & certificates' } },
-    rhand: { to: 'work', t: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' }, s: { ar: 'لوحات مؤشرات صمّمتها', en: 'Dashboards I built' } },
-    lhand: { to: 'tools', t: { ar: 'Excel متقدم', en: 'Advanced Excel' }, s: { ar: 'أدواتي اليومية', en: 'My everyday toolkit' } },
-    heart: { to: 'about', t: { ar: 'شغف وعمل جماعي', en: 'Passion & teamwork' }, s: { ar: 'نبذة عني', en: 'About me' } },
-    base: { to: 'numbers', t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'بيانات حلّلتها', en: 'analyzed' } },
+    frontal: { to: 'work', t: { ar: 'قرارات من البيانات', en: 'Data-driven decisions' }, s: { ar: 'الفص الجبهي · خبراتي', en: 'Frontal lobe · experience' } },
+    parietal: { to: 'numbers', t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'الفص الجداري · الأرقام', en: 'Parietal lobe · numbers' } },
+    occipital: { to: 'tools', t: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' }, s: { ar: 'الفص القذالي · الرؤية', en: 'Occipital lobe · vision' } },
+    temporal: { to: 'learn', t: { ar: 'ذكاء اصطناعي', en: 'Artificial Intelligence' }, s: { ar: 'الفص الصدغي · التعلّم', en: 'Temporal lobe · learning' } },
+    cerebellum: { to: 'about', t: { ar: 'عمل جماعي', en: 'Teamwork' }, s: { ar: 'المخيخ · التنسيق', en: 'Cerebellum · coordination' } },
   },
 };
 

@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────
-//  Intro scene: a digital neural network whose signals fly together
-//  into a holographic human: a sculpted body traced by light contours,
-//  a nervous system that lights up from the brain, a beating heart,
-//  a data platform, and DOM callouts.
-//  The body mesh is baked offline (tools/body) into assets/body.bin.
+//  The hero: a neural network whose signals fly together into a holographic
+//  brain. Fibre tracts light up from the brainstem, every lobe is one skill,
+//  and each label lights its lobe and links to its section.
+//  The brain mesh is baked offline by tools/brain/brain-build.mjs into
+//  assets/brain.bin (see the usage line at the top of that file).
 // ─────────────────────────────────────────────────────────────
 import * as THREE from '../assets/three.module.min.js';
 
@@ -18,17 +18,21 @@ const T_READY = 5.45;    // hero text reveal
 const T_END = 6.2;
 const T_NERVE = 4.35;    // nervous system starts growing from the brain
 const D_NERVE = 2.2;
-const BODY_URL = new URL('../assets/body.bin', import.meta.url);
+const BODY_URL = new URL('../assets/brain.bin', import.meta.url);
+const Y_BOT = -1.0, Y_TOP = 1.1;  // stem tip → crown (mesh units)
+const PLAT_Y = -1.34;             // projector platform under the brain
+const CEN = [-0.05, 0.32, 0];     // middle of the cerebrum
+const ORB_Y = 0.12, ORB_R = 1.62;
 
 const rnd = Math.random;
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const ease = (t) => t * t * (3 - 2 * t);
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
-// ── body.bin ──
+// ── brain.bin (the mesh format keeps its BODY magic) ──
 function parseBody(buf) {
   const dv = new DataView(buf);
-  if (dv.getUint32(0, true) !== 0x59444f42) throw new Error('bad body.bin');
+  if (dv.getUint32(0, true) !== 0x59444f42) throw new Error('bad brain.bin');
   const jl = dv.getUint32(8, true);
   const meta = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, jl)));
   const pad4 = (n) => (n + 3) & ~3;
@@ -46,7 +50,9 @@ function parseBody(buf) {
   const npos = new Float32Array(nSeg * 6), nd = new Float32Array(nSeg * 2);
   for (let i = 0; i < nSeg * 6; i++) npos[i] = nq3[i] * meta.posScale;
   for (let i = 0; i < nSeg * 2; i++) nd[i] = (ndq[i] / 65535) * meta.maxD;
-  return { meta, pos, nrm, ao, index, npos, nd };
+  const lobe = new Float32Array(nv);
+  if (meta.lobeOff) { const lq = new Uint8Array(buf, meta.lobeOff, nv); for (let i = 0; i < nv; i++) lobe[i] = lq[i]; }
+  return { meta, pos, nrm, ao, index, npos, nd, lobe };
 }
 // area-weighted points on the mesh surface (with interpolated normals)
 function sampleSurface(B, n) {
@@ -149,7 +155,7 @@ void main(){
   vec3 np = mix(aA, aB, aI.x > 0.5 ? 0.0 : ft);
   vec3 nw = (uNetM * vec4(np, 1.0)).xyz;
   vec3 hw = (uHumM * vec4(aH, 1.0)).xyz;
-  float hy = clamp((aH.y + 1.75) / 3.5, 0.0, 1.0);
+  float hy = clamp((aH.y + 1.0) / 2.1, 0.0, 1.0);
   float p = clamp((uMorph * 1.3 - (hy * 0.62 + r1 * 0.28)) / 0.4, 0.0, 1.0);
   float e = p * p * (3.0 - 2.0 * p);
   vec3 sw = vec3(sin(r1 * 91.0 + r2 * 13.0), cos(r2 * 77.0 + r1 * 7.0), sin((r1 - r2) * 53.0));
@@ -163,7 +169,7 @@ void main(){
   float fr = pow(1.0 - abs(facing), 2.0);
   float back = facing < 0.0 ? 0.18 : 1.0;
   float tw = 0.5 + 0.5 * sin(uTime * (1.3 + r2 * 2.6) + r1 * 60.0);
-  float sc = exp(-pow((aH.y - uScan) * 10.0, 2.0)) * e;
+  float sc = exp(-pow((aH.y - uScan) * 14.0, 2.0)) * e;
   float s = mix(mix(0.95, 2.4, aI.x), mix(0.55 + fr * 0.5, 1.25, aI.y), e);
   s *= (0.8 + 0.4 * tw) * (1.0 + sc * 0.9);
   gl_PointSize = uSize * s * (7.0 / -mv.z);
@@ -194,17 +200,25 @@ void main(){
 // hologram body (shared vertex stage keeps the depth pre-pass bit-identical)
 const B_VERT = /* glsl */ `
 uniform float uInflate;
+uniform vec3 uLk0, uLk1, uTA, uTB;
 attribute float aAO;
+attribute float aLobe;
 varying vec3 vN;
 varying vec3 vV;
 varying vec3 vP;
 varying float vAO;
+varying float vHot;
+varying vec3 vTint;
 void main(){
   vec4 mv = modelViewMatrix * vec4(position + normal * uInflate, 1.0);
   vN = normalize(normalMatrix * normal);
   vV = -mv.xyz;
   vP = position;
   vAO = aAO;
+  // lobes: 0 frontal, 1 parietal, 2 occipital, 3 temporal, 4 cerebellum, 5 brainstem
+  float L = aLobe;
+  vHot = L < 0.5 ? uLk0.x : L < 1.5 ? uLk0.y : L < 2.5 ? uLk0.z : L < 3.5 ? uLk1.x : L < 4.5 ? uLk1.y : uLk1.z;
+  vTint = mix(uTA, uTB, L < 0.5 ? 0.0 : L < 1.5 ? 0.62 : L < 2.5 ? 0.32 : L < 3.5 ? 1.0 : L < 4.5 ? 0.82 : 0.5);
   gl_Position = projectionMatrix * mv;
 }`;
 const B_DEPTH = /* glsl */ `
@@ -215,12 +229,14 @@ void main(){
   gl_FragColor = vec4(0.0);
 }`;
 const B_FRAG = /* glsl */ `${GLOW}
-uniform float uTime, uReveal, uFx, uScan, uLight, uAlpha, uDensity;
+uniform float uTime, uReveal, uFx, uScan, uLight, uAlpha, uDensity, uFocus;
 uniform vec3 uFill, uLine, uRim, uEdge;
 varying vec3 vN;
 varying vec3 vV;
 varying vec3 vP;
 varying float vAO;
+varying float vHot;
+varying vec3 vTint;
 float contour(float c){
   float fw = fwidth(c);
   float d = abs(fract(c - 0.5) - 0.5);
@@ -237,20 +253,27 @@ void main(){
   float c = y * uDensity;
   float ln = contour(c);
   float mj = contour(c / 6.0);
-  float sb = exp(-pow((y - uScan) * 6.5, 2.0)) * uFx;
-  float edge = exp(-pow((uReveal - y) * 42.0, 2.0)) * step(uReveal, 1.82);
+  float sb = exp(-pow((y - uScan) * 9.0, 2.0)) * uFx;
+  float edge = exp(-pow((uReveal - y) * 42.0, 2.0)) * step(uReveal, 1.12);
+  vec3 line = mix(uLine, vTint, 0.42);
+  vec3 fill = mix(uFill, vTint, 0.3);
+  float hot = vHot;
+  // while a label is hovered, the other lobes step back
+  float dim = 1.0 - 0.5 * uFocus * (1.0 - clamp(hot, 0.0, 1.0));
   float key = 0.75 + 0.25 * clamp(dot(n, normalize(vec3(-0.35, 0.75, 0.55))), 0.0, 1.0);
   if (uLight < 0.5) {
-    vec3 col = uFill * (0.06 + 0.3 * fres) * ao * key
-      + uLine * ln * (0.1 + 0.28 * fres + 0.08 * key) * ao
-      + uLine * mj * 0.12 * ao
+    vec3 col = fill * (0.06 + 0.3 * fres) * ao * key
+      + line * ln * (0.07 + 0.2 * fres + 0.06 * key) * ao
+      + line * mj * 0.12 * ao
       + uRim * fres * 0.9
       + uLine * sb * (0.06 + 0.6 * ln) + uEdge * sb * ln * 0.25
-      + (uLine * 0.8 + uEdge * 0.5) * edge;
-    gl_FragColor = glow(col * uAlpha);
+      + (uLine * 0.8 + uEdge * 0.5) * edge
+      + (line * 0.6 + uEdge * 0.22) * hot * (0.14 + 0.85 * ln + 0.75 * fres) * ao;
+    gl_FragColor = glow(col * uAlpha * dim);
   } else {
-    float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.3 * ln) + edge * 0.7;
-    gl_FragColor = vec4(mix(uLine, uRim, fres), clamp(a, 0.0, 0.92) * uAlpha);
+    float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.3 * ln) + edge * 0.7
+      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao;
+    gl_FragColor = vec4(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), clamp(a, 0.0, 0.92) * uAlpha * mix(1.0, dim, 0.8));
   }
 }`;
 const H_FRAG = /* glsl */ `${GLOW}
@@ -274,12 +297,12 @@ void main(){
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 const N_FRAG = /* glsl */ `${GLOW}
-uniform float uTime, uGrow, uAlpha, uLight;
+uniform float uTime, uGrow, uAlpha, uLight, uTipEnd;
 uniform vec3 uCol, uPulse;
 varying float vD;
 void main(){
   if (vD > uGrow) discard;
-  float tip = exp(-pow((uGrow - vD) * 5.0, 2.0)) * step(uGrow, 4.9);
+  float tip = exp(-pow((uGrow - vD) * 5.0, 2.0)) * step(uGrow, uTipEnd);
   float ph = fract(vD * 0.75 - uTime * 0.42);
   float pulse = smoothstep(0.8, 0.97, ph) * (1.0 - smoothstep(0.97, 1.0, ph));
   float k = clamp(pulse * 1.1 + tip, 0.0, 1.0);
@@ -329,12 +352,12 @@ attribute vec4 aR;
 varying float vA;
 void main(){
   vec3 p = position;
-  p.y = mod(p.y + 1.85 + uTime * (0.035 + aR.x * 0.06), 3.9) - 1.85;
+  p.y = mod(p.y + 1.4 + uTime * (0.03 + aR.x * 0.05), 2.85) - 1.4;
   p.x += sin(uTime * 0.3 + aR.y * 6.28) * 0.06;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
   gl_PointSize = uSize * (0.6 + aR.z) * (7.0 / -mv.z);
-  float edge = smoothstep(-1.85, -1.5, p.y) * (1.0 - smoothstep(1.5, 2.0, p.y));
+  float edge = smoothstep(-1.4, -1.1, p.y) * (1.0 - smoothstep(1.05, 1.45, p.y));
   vA = edge * (0.35 + 0.65 * (0.5 + 0.5 * sin(uTime * (0.8 + aR.w * 2.0) + aR.y * 40.0)));
 }`;
 const DUST_FRAG = /* glsl */ `${GLOW}
@@ -381,12 +404,46 @@ void main(){
   gl_FragColor = uLight < 0.5 ? glow(uColor * a) : vec4(uColor, a);
 }`;
 
+// convex hull (monotone chain) of 2D points
+function convexHull(P) {
+  const p = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+// distance from an inside point along a direction to the hull's edge
+function rayExit(h, ox, oy, ux, uy) {
+  let best = 0;
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i], b = h[(i + 1) % h.length], ex = b[0] - a[0], ey = b[1] - a[1];
+    const den = ux * ey - uy * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = ((a[0] - ox) * ey - (a[1] - oy) * ex) / den, s = ((a[0] - ox) * uy - (a[1] - oy) * ux) / den;
+    if (t > 0 && s >= 0 && s <= 1 && t > best) best = t;
+  }
+  return best;
+}
+function inHull(h, x, y) {
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i], b = h[(i + 1) % h.length];
+    if ((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) < 0) return false;
+  }
+  return true;
+}
+function boxHitsHull(x, y, w, h, hull) {
+  for (const q of hull) if (q[0] > x && q[0] < x + w && q[1] > y && q[1] < y + h) return true;
+  return inHull(hull, x, y) || inHull(hull, x + w, y) || inHull(hull, x, y + h) || inHull(hull, x + w, y + h) || inHull(hull, x + w / 2, y + h / 2);
+}
+
 const PALETTE = {
   dark: {
     c1: '#7dd3fc', c2: '#d9fbff', c3: '#22d3ee', net: '#38bdf8',
     fill: '#0ea5e9', line: '#5ee3f7', rim: '#a5f3fc', edge: '#e6fdff', halo: '#38d6f0',
     nerve: '#1fb8e0', pulse: '#e9feff', heart: '#5ee3f7', heartCore: '#ffffff',
     hud: '#5ee3f7', hud2: '#7dd3fc', glow: '#0ea5e9', dust: '#a5f3fc',
+    tA: '#2dd4bf', tB: '#38bdf8',
     sharp: 1.55, size: 2.5, netOp: 0.13, hudOp: 0.5, glowOp: 0.26, beamOp: 0.16, dustOp: 0.55,
   },
   light: {
@@ -394,6 +451,7 @@ const PALETTE = {
     fill: '#0891b2', line: '#0e7490', rim: '#0369a1', edge: '#0284c7', halo: '#06b6d4',
     nerve: '#0284c7', pulse: '#06b6d4', heart: '#0891b2', heartCore: '#0e7490',
     hud: '#0e7490', hud2: '#0369a1', glow: '#38bdf8', dust: '#0891b2',
+    tA: '#0f766e', tB: '#0369a1',
     sharp: 0.85, size: 2.7, netOp: 0.17, hudOp: 0.55, glowOp: 0.16, beamOp: 0.1, dustOp: 0.45,
   },
 };
@@ -468,54 +526,66 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   netGroup.add(netLines);
   scene.add(netGroup);
 
-  // ── the figure ──
+  // ── the brain: brainG turns it to face the text, the platform below stays level ──
   const humGroup = new THREE.Group();
   scene.add(humGroup);
+  const brainG = new THREE.Group();
+  humGroup.add(brainG);
+  // the same turn without the idle sway: labels are laid out from this, so they stay put
+  // while the brain drifts (only their leader lines follow it)
+  const calm = new THREE.Object3D();
+  humGroup.add(calm);
   const bodyU = {
     uTime: { value: 0 }, uReveal: { value: -9 }, uFx: { value: 0 }, uScan: { value: -9 }, uLight: { value: 0 },
-    uAlpha: { value: 1 }, uDensity: { value: 28 }, uInflate: { value: 0 },
+    uAlpha: { value: 1 }, uDensity: { value: 28 }, uInflate: { value: 0 }, uFocus: { value: 0 },
     uFill: { value: new THREE.Color() }, uLine: { value: new THREE.Color() }, uRim: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() },
+    uLk0: { value: new THREE.Vector3() }, uLk1: { value: new THREE.Vector3() }, uTA: { value: new THREE.Color() }, uTB: { value: new THREE.Color() },
   };
   const depthMat = new THREE.ShaderMaterial({ uniforms: bodyU, vertexShader: B_VERT, fragmentShader: B_DEPTH, colorWrite: false });
   const holoMat = new THREE.ShaderMaterial({ uniforms: bodyU, vertexShader: B_VERT, fragmentShader: B_FRAG, transparent: true, depthWrite: false });
   const haloU = { uInflate: { value: 0.034 }, uReveal: bodyU.uReveal, uLight: bodyU.uLight, uAlpha: { value: 0 }, uRim: { value: new THREE.Color() } };
   const haloMat = new THREE.ShaderMaterial({ uniforms: haloU, vertexShader: B_VERT, fragmentShader: H_FRAG, transparent: true, depthWrite: false, side: THREE.BackSide });
   for (const m of [depthMat, holoMat, haloMat]) m.extensions = { derivatives: true };
-  const nerveU = { uTime: { value: 0 }, uGrow: { value: 0 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() } };
+  const nerveU = { uTime: { value: 0 }, uGrow: { value: 0 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uTipEnd: { value: 4 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() } };
   const nerveMat = new THREE.ShaderMaterial({ uniforms: nerveU, vertexShader: N_VERT, fragmentShader: N_FRAG, transparent: true, depthWrite: false, depthTest: false });
   const brainLinkMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
   const heartU = { uSize: { value: 60 }, uColor: { value: new THREE.Color() }, uCore: { value: new THREE.Color() }, uBeat: { value: 0 }, uPhase: { value: 1 }, uAlpha: { value: 0 }, uLight: { value: 0 } };
   const heartMat = new THREE.ShaderMaterial({ uniforms: heartU, vertexShader: SPRITE_VERT, fragmentShader: HEART_FRAG, transparent: true, depthWrite: false, depthTest: false });
-  let maxD = 4, body = null, bodyFailed = false, heartPos = [0.075, 0.86, 0.12];
+  let maxD = 4, body = null, bodyFailed = false, heartPos = [-0.1, 0.05, 0];
+  const sil = [];   // surface sample: the brain's on-screen box, which the labels ring
+  const prof = [];  // horizontal cross-sections by height, for the scan ring
 
   function buildBody(B) {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(B.pos, 3));
     g.setAttribute('normal', new THREE.BufferAttribute(B.nrm, 3));
     g.setAttribute('aAO', new THREE.BufferAttribute(B.ao, 1));
+    g.setAttribute('aLobe', new THREE.BufferAttribute(B.lobe, 1));
     g.setIndex(new THREE.BufferAttribute(B.index, 1));
-    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1.9);
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 1.6);
     const pre = new THREE.Mesh(g, depthMat); pre.renderOrder = 0;
     const halo = new THREE.Mesh(g, haloMat); halo.renderOrder = 1;
     const holo = new THREE.Mesh(g, holoMat); holo.renderOrder = 2;
-    humGroup.add(pre, halo, holo);
-    // nerves
+    brainG.add(pre, halo, holo);
+    // fibre tracts
     const ng = new THREE.BufferGeometry();
     ng.setAttribute('position', new THREE.BufferAttribute(B.npos, 3));
     ng.setAttribute('aD', new THREE.BufferAttribute(B.nd, 1));
     const nerves = new THREE.LineSegments(ng, nerveMat);
     nerves.renderOrder = 3;
     nerves.frustumCulled = false;
-    humGroup.add(nerves);
+    brainG.add(nerves);
     maxD = B.meta.maxD;
-    // particles settle on the surface; a few form the brain's own little network
+    nerveU.uTipEnd.value = maxD + 0.05;
+    // particles settle on the cortex; a few become neurons strung along the tracts (more towards their ends)
     const S = sampleSurface(B, NSURF);
     aH.set(S.P); aN.set(S.N);
-    const br = B.meta.anchors.brain, bp = new Float32Array(NBRAIN * 3);
+    const ns = B.npos.length / 6, bp = new Float32Array(NBRAIN * 3);
     for (let j = 0; j < NBRAIN; j++) {
-      let x, y, z;
-      do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; } while (x * x + y * y + z * z > 1);
-      bp[j * 3] = br[0] + x * 0.105; bp[j * 3 + 1] = br[1] + y * 0.068; bp[j * 3 + 2] = br[2] + z * 0.12;
+      let si;
+      do { si = (rnd() * ns) | 0; } while (rnd() > 0.15 + B.nd[si * 2] / maxD);
+      const t = rnd();
+      for (let k = 0; k < 3; k++) bp[j * 3 + k] = B.npos[si * 6 + k] * (1 - t) + B.npos[si * 6 + 3 + k] * t + (rnd() - 0.5) * 0.05;
     }
     aH.set(bp, NSURF * 3);
     geo.attributes.aH.needsUpdate = true;
@@ -527,8 +597,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
     const bl = new THREE.LineSegments(lg, brainLinkMat);
     bl.renderOrder = 4;
-    humGroup.add(bl);
-    // heart
+    brainG.add(bl);
+    // a soft pulse deep in the middle (thalamus), where the tracts meet
     heartPos = B.meta.anchors.heart;
     const hg = new THREE.BufferGeometry();
     hg.setAttribute('position', new THREE.Float32BufferAttribute(heartPos, 3));
@@ -536,7 +606,24 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const heart = new THREE.Points(hg, heartMat);
     heart.frustumCulled = false;
     heart.renderOrder = 7;
-    humGroup.add(heart);
+    brainG.add(heart);
+    // label anchors, the silhouette sample and the cross-section profile
+    for (const c of calls) c.at = B.meta.anchors[c.k] || [0, 0, 0];
+    const nv = B.meta.nv, P = B.pos, ext = [0, 0, 0, 0, 0, 0];
+    for (let v = 0; v < nv; v++) {
+      if (P[v * 3] < P[ext[0] * 3]) ext[0] = v; if (P[v * 3] > P[ext[1] * 3]) ext[1] = v;
+      if (P[v * 3 + 1] < P[ext[2] * 3 + 1]) ext[2] = v; if (P[v * 3 + 1] > P[ext[3] * 3 + 1]) ext[3] = v;
+      if (P[v * 3 + 2] < P[ext[4] * 3 + 2]) ext[4] = v; if (P[v * 3 + 2] > P[ext[5] * 3 + 2]) ext[5] = v;
+    }
+    for (const v of ext) if (P[v * 3 + 1] > -0.62) sil.push(P[v * 3], P[v * 3 + 1], P[v * 3 + 2]);
+    for (let i = 0; i < 420; i++) { const v = ((rnd() * nv) | 0) * 3; if (P[v + 1] > -0.62) sil.push(P[v], P[v + 1], P[v + 2]); }
+    const NB = 36, mn = new Array(NB).fill(9), mx = new Array(NB).fill(-9), zm = new Array(NB).fill(0);
+    for (let v = 0; v < nv; v++) {
+      const x = P[v * 3], y = P[v * 3 + 1], z = Math.abs(P[v * 3 + 2]);
+      const k = Math.min(NB - 1, Math.max(0, Math.floor(((y - Y_BOT) / (Y_TOP - Y_BOT)) * NB)));
+      if (x < mn[k]) mn[k] = x; if (x > mx[k]) mx[k] = x; if (z > zm[k]) zm[k] = z;
+    }
+    for (let k = 0; k < NB; k++) prof.push(mn[k] < 9 ? [(mn[k] + mx[k]) / 2, (mx[k] - mn[k]) / 2, zm[k]] : [0, 0.12, 0.12]);
     body = B;
   }
   fetch(BODY_URL)
@@ -556,7 +643,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     return l;
   };
   const platform = new THREE.Group();
-  platform.position.y = -1.75;
+  platform.position.y = PLAT_Y;
   humGroup.add(platform);
   const base = new THREE.Group();
   base.add(mkLines(ringPositions(0.42, 96), hudMat));
@@ -572,13 +659,14 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   const NBAR = 90, barPos = new Float32Array(NBAR * 6), barSeed = Array.from({ length: NBAR }, () => [rnd(), rnd() * 6.28]);
   const bars = mkLines(barPos, barMat);
   base.add(bars);
+  base.scale.setScalar(1.32);
   platform.add(base);
   const scanRing = mkLines(ringPositions(1, 96), hudMat);
-  humGroup.add(scanRing);
+  brainG.add(scanRing);
   const orbit = new THREE.Group();
-  orbit.position.y = 0.62;
+  orbit.position.y = ORB_Y;
   orbit.rotation.set(0.32, 0, -0.12);
-  orbit.add(mkLines(ringPositions(1.02, 128, true), hudMat2));
+  orbit.add(mkLines(ringPositions(ORB_R, 160, true), hudMat2));
   humGroup.add(orbit);
   const dotMat = new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color() }, uSize: { value: 7 }, uOpacity: { value: 0 }, uLight: bodyU.uLight },
@@ -596,7 +684,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader: GLOW_FRAG, transparent: true, depthWrite: false,
   });
-  const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.8), glowMat);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 3.7), glowMat);
   glow.rotation.x = -Math.PI / 2;
   glow.position.y = -0.01;
   glow.renderOrder = 1;
@@ -605,14 +693,14 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms: { uColor: { value: new THREE.Color() }, uOpacity: { value: 0 }, uLight: bodyU.uLight },
     vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide,
   });
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.6, 1.5, 64, 1, true), beamMat);
-  beam.position.y = 0.75;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.86, 1.2, 64, 1, true), beamMat);
+  beam.position.y = 0.6;
   beam.renderOrder = 1;
   platform.add(beam);
   const ND = small ? 140 : 240, dpos = new Float32Array(ND * 3), dr = new Float32Array(ND * 4);
   for (let i = 0; i < ND; i++) {
-    const a = rnd() * Math.PI * 2, r = 0.55 + Math.sqrt(rnd()) * 1.5;
-    dpos[i * 3] = Math.cos(a) * r; dpos[i * 3 + 1] = rnd() * 3.9 - 1.85; dpos[i * 3 + 2] = Math.sin(a) * r * 0.7;
+    const a = rnd() * Math.PI * 2, r = 1.05 + Math.sqrt(rnd()) * 1.35;
+    dpos[i * 3] = Math.cos(a) * r; dpos[i * 3 + 1] = rnd() * 2.85 - 1.4; dpos[i * 3 + 2] = Math.sin(a) * r * 0.75;
     dr[i * 4] = rnd(); dr[i * 4 + 1] = rnd(); dr[i * 4 + 2] = rnd(); dr[i * 4 + 3] = rnd();
   }
   const dustGeo = new THREE.BufferGeometry();
@@ -637,6 +725,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uSharp.value = P.sharp;
     bodyU.uLight.value = light ? 1 : 0;
     bodyU.uFill.value.set(P.fill); bodyU.uLine.value.set(P.line); bodyU.uRim.value.set(P.rim); bodyU.uEdge.value.set(P.edge);
+    bodyU.uTA.value.set(P.tA); bodyU.uTB.value.set(P.tB);
     haloU.uRim.value.set(P.halo);
     nerveU.uLight.value = light ? 1 : 0;
     nerveU.uCol.value.set(P.nerve); nerveU.uPulse.value.set(P.pulse);
@@ -657,16 +746,16 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   }
   setTheme(theme);
 
-  // ── callouts (DOM) ──
-  // phones: labels clear the hands (x 0.545, fingers to about 0.6) by GAP_P pixels
-  const ARM_P = 0.62, GAP_P = 10;
+  // ── callouts (DOM): one per lobe, ringed round the brain ──
   const CALLS = [
-    { k: 'brain', at: [0.0, 1.62, 0.0], side: 'outer', dy: -46, m: true },
-    { k: 'heart', at: [0.085, 0.88, 0.25], side: 'inner', dy: -34, m: false },
-    { k: 'rhand', at: [0.545, -0.2, 0.07], side: '+x', dy: 36, m: true },
-    { k: 'lhand', at: [-0.545, -0.2, 0.05], side: '-x', dy: 36, m: true },
-    { k: 'base', at: [0, -1.75, 0.88], side: 'inner', dy: 18, m: true },
+    { k: 'frontal', lobe: 0 },
+    { k: 'parietal', lobe: 1 },
+    { k: 'occipital', lobe: 2 },
+    { k: 'temporal', lobe: 3 },
+    { k: 'cerebellum', lobe: 4 },
   ];
+  let hoverLobe = -1;
+  const lobeK = [0, 0, 0, 0, 0];
   const NS = 'http://www.w3.org/2000/svg';
   calloutsEl.innerHTML = '';
   const svg = document.createElementNS(NS, 'svg');
@@ -689,12 +778,15 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     el.className = 'co';
     el.tabIndex = -1;
     el.setAttribute('aria-hidden', 'true');
-    el.addEventListener('pointerenter', () => g.classList.add('hot'));
-    el.addEventListener('pointerleave', () => g.classList.remove('hot'));
-    el.addEventListener('focus', () => g.classList.add('hot'));
-    el.addEventListener('blur', () => g.classList.remove('hot'));
+    // hovering or focusing a label lights its leader line and its lobe
+    const on = () => { g.classList.add('hot'); hoverLobe = c.lobe; };
+    const off = () => { g.classList.remove('hot'); if (hoverLobe === c.lobe) hoverLobe = -1; };
+    el.addEventListener('pointerenter', on);
+    el.addEventListener('pointerleave', off);
+    el.addEventListener('focus', on);
+    el.addEventListener('blur', off);
     calloutsEl.appendChild(el);
-    return { ...c, path, ring, pt, g, el, w: 0, h: 0, shown: false };
+    return { ...c, at: [0, 0, 0], path, ring, pt, g, el, w: 0, h: 0, shown: false, flashT: null, bx: 0, by: 0, placed: false };
   });
   function setLabels(map) {
     for (const c of calls) {
@@ -736,55 +828,68 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   // ── layout ──
   let W = 1, H = 1, portrait = false, side = lang === 'ar' ? -1 : 1, dpr = 1;
   const tgt = { x: 0, y: 0, s: 1, yaw: 0 }, cur = { x: 0, y: 0, s: 1, yaw: 0 };
-  let netScale = 1, netRz = 0, first = true;
+  let netScale = 1, netRz = 0, first = true, textEdge = 0, textTop = 0;
+  const HW = 1.4; // the brain's half-width once it is turned (units)
+  // EN: the brain sits right of the text and faces it; AR mirrors that
+  const yawFor = (sd) => (sd > 0 ? Math.PI + 0.42 : -0.42);
+  // how far the hero text really reaches (its box is wider than the words in it)
+  const trng = document.createRange();
+  function textInner() {
+    const ht = document.getElementById('heroText');
+    if (!ht) return null;
+    let l = Infinity, r = -Infinity;
+    const take = (b) => { if (b.width > 0 && b.height > 0) { l = Math.min(l, b.left); r = Math.max(r, b.right); } };
+    for (const ch of ht.children) {
+      if (getComputedStyle(ch).display === 'none') continue;
+      if (ch.children.length && ch.id === 'heroCta') { for (const k of ch.children) take(k.getBoundingClientRect()); continue; }
+      trng.selectNodeContents(ch); take(trng.getBoundingClientRect());
+    }
+    return Number.isFinite(l) ? { l, r } : null;
+  }
   function layout() {
     const vh = 2 * CAM_Z * Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     const vw = vh * camera.aspect, ppw = H / vh;
     portrait = W / H < 1.15 || W < 760;
+    tgt.yaw = yawFor(side);
     if (!portrait) {
-      const s = Math.min(0.94, (H - 170) / (3.5 * ppw));
-      // pull the figure inward when the screen-edge labels would not fit (tablets in landscape)
-      const room = W / 2 - 18 - outerLabelW() - 36 - 0.66 * s * ppw;
-      const off = Math.max(W * 0.13, Math.min(W * 0.215, room));
-      tgt.s = s; tgt.x = (side * off) / ppw; tgt.y = (-10 / ppw); tgt.yaw = -side * 0.2;
+      // centred in the space beside the text, leaving room for a label on either side
+      const tb = textInner();
+      const inner = tb ? Math.max(W * 0.3, side > 0 ? tb.r : W - tb.l) + 24 : W * 0.46;
+      // budget: a full label beside the brain on the screen-edge side (the back lobes),
+      // about half a label past its front corners on the text side
+      const lab = Math.min(210, Math.max(150, labelW()));
+      const avail = W - inner - 16 - 10;
+      const s = Math.max(0.42, Math.min(1.15, (H - 220) / (2.55 * ppw), (avail - lab * 1.45 - 36) / (2 * HW * ppw)));
+      const bw = 2 * HW * s * ppw;
+      const cxp = W - (10 + lab + 18 + Math.max(bw, avail - lab * 1.45 - 36) / 2);
+      tgt.s = s; tgt.x = (side * (cxp - W / 2)) / ppw; tgt.y = 0.17 * s - 4 / ppw;
+      textEdge = inner + 16;
       netScale = Math.min(1, vw / 6.6); netRz = 0;
       calloutsEl.style.removeProperty('--co-max');
       calloutsEl.classList.remove('compact');
-      for (const c of calls) c.el.style.maxWidth = '';
     } else {
       const reserve = getReserve ? getReserve() : H * 0.42;
-      const top = 70, bottom = H - reserve - 22;
-      const fig = Math.max(160, bottom - top);
-      // tablets in portrait get a larger figure; any spare height is shared above and
-      // below it, nudged up so the platform keeps clear of the text
-      const s = Math.max(0.3, Math.min(W >= 700 ? 0.74 : 0.62, fig / (3.5 * ppw), (vw * 0.52) / 1.3));
-      const slack = Math.max(0, fig - 3.5 * s * ppw);
-      const centerPx = top + fig / 2 - Math.min(slack / 2, 0.15 * s * ppw);
-      tgt.s = s; tgt.x = 0; tgt.y = (H / 2 - centerPx) / ppw + 0.02 * s; tgt.yaw = 0;
+      const top = 66, bottom = H - reserve - 16;
+      const fig = Math.max(150, bottom - top);
+      const s = Math.max(0.26, Math.min(W >= 700 ? 1.0 : 0.8, fig / (2.62 * ppw), (vw * 0.78) / (2 * HW)));
+      // the block sits nearer the text than the nav, so the brain and the name read as one
+      const blockH = 2.62 * s * ppw, cyp = Math.max(top + blockH / 2, bottom - blockH / 2 - Math.min(40, (fig - blockH) * 0.3));
+      tgt.s = s; tgt.x = 0; tgt.y = (H / 2 - cyp) / ppw + 0.17 * s;
+      textTop = bottom + 8;
       netScale = Math.min(0.56, (vw * 0.9) / 3.1); netRz = Math.PI / 2;
-      // room beside the hands (widest point, unrotated) so labels never leave the screen;
-      // the brain label sits beside the head, which leaves it much more room
-      const room = Math.floor(W / 2 - ARM_P * s * ppw - GAP_P - 6 - 10);
-      const headRoom = Math.floor(W / 2 - 0.2 * s * ppw - GAP_P - 6 - 10);
-      calloutsEl.style.setProperty('--co-max', Math.max(64, room) + 'px');
-      calloutsEl.classList.toggle('compact', room < 130);
-      for (const c of calls) c.el.style.maxWidth = c.side === 'outer' ? Math.max(64, headRoom) + 'px' : '';
+      calloutsEl.style.setProperty('--co-max', Math.max(90, Math.min(160, Math.floor(W * 0.4))) + 'px');
+      calloutsEl.classList.toggle('compact', W < 430);
     }
     // contour spacing follows the on-screen size (about 8–9 device pixels apart)
     const pxPerUnit = ppw * tgt.s * dpr;
-    bodyU.uDensity.value = Math.max(12, Math.min(34, pxPerUnit / 8.5));
-    // the heart keeps the same size relative to the body on every screen
-    heartU.uSize.value = pxPerUnit * 0.375;
+    bodyU.uDensity.value = Math.max(12, Math.min(40, pxPerUnit / 10.5));
+    heartU.uSize.value = pxPerUnit * 0.3;
     if (first) Object.assign(cur, tgt);
   }
-  // widest label that sits on the screen-edge side of the figure in landscape
-  function outerLabelW() {
+  function labelW() {
     let w = 0;
-    for (const c of calls) {
-      const outer = c.side === 'outer' || (c.side === '+x' && side > 0) || (c.side === '-x' && side < 0);
-      if (outer) w = Math.max(w, c.w);
-    }
-    return w || 190;
+    for (const c of calls) w = Math.max(w, c.w);
+    return w || 180;
   }
   function resize() {
     W = canvas.clientWidth || innerWidth;
@@ -815,43 +920,78 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   const fire = (name) => { if (!fired[name]) { fired[name] = true; onPhase && onPhase(name); } };
   const v3 = new THREE.Vector3(), v4 = new THREE.Vector3();
 
-  function updateCallouts() {
+  function updateCallouts(dt) {
     const vis = scrollK < 0.35;
     calloutsEl.style.opacity = vis ? String(1 - scrollK / 0.35) : '0';
     // fading labels stop taking clicks and focus before they disappear
     calloutsEl.classList.toggle('off', scrollK > 0.22);
-    if (!vis) return;
+    if (!vis || !body) return;
+    calm.rotation.set(0.2, cur.yaw, 0);
     humGroup.updateMatrixWorld();
-    v3.set(0, 0, 0).applyMatrix4(humGroup.matrixWorld).project(camera);
-    const fx = (v3.x * 0.5 + 0.5) * W;
-    v4.set(portrait ? ARM_P : 0.66, 0, 0).applyMatrix4(humGroup.matrixWorld).project(camera);
-    const halfW = Math.abs((v4.x * 0.5 + 0.5) * W - fx);
-    const outerSide = portrait ? -1 : fx < W / 2 ? -1 : 1;
-    const gap = portrait ? GAP_P : 30;
-    const dyK = portrait ? 0.62 : 1;
+    const M = brainG.matrixWorld, MC = calm.matrixWorld, zs = -side; // anchors sit on the hemisphere that faces the viewer
+    // the brain's outline on screen (convex hull of a surface sample); each label sits just outside it,
+    // on the ray from the brain's centre through its lobe
+    const pts = [];
+    for (let i = 0; i < sil.length; i += 3) {
+      v3.set(sil[i], sil[i + 1], sil[i + 2]).applyMatrix4(MC).project(camera);
+      pts.push([(v3.x * 0.5 + 0.5) * W, (-v3.y * 0.5 + 0.5) * H]);
+    }
+    const hull = convexHull(pts);
+    // rays start from the middle of the cerebrum, so lower lobes get diagonal (not straight-down) labels
+    v3.set(CEN[0], CEN[1], 0).applyMatrix4(MC).project(camera);
+    const cx = (v3.x * 0.5 + 0.5) * W, cy = (-v3.y * 0.5 + 0.5) * H;
+    const gap = portrait ? 6 : 18;
+    const live = [];
     calls.forEach((c, i) => {
-      const allowed = (!portrait || c.m) && !!body;
-      const want = allowed && T >= T_READY - 0.25 + i * 0.16 && c.el.innerHTML;
+      const want = T >= T_READY - 0.25 + i * 0.16 && !!c.el.innerHTML;
       if (want !== c.shown) {
-        c.shown = want; c.el.classList.toggle('show', !!want); c.g.classList.toggle('show', !!want);
+        c.shown = want; c.el.classList.toggle('show', want); c.g.classList.toggle('show', want);
         c.el.tabIndex = want ? 0 : -1; c.el.setAttribute('aria-hidden', want ? 'false' : 'true');
+        if (want) c.flashT = time; else c.placed = false;
       }
       if (!want) return;
-      v3.set(c.at[0], c.at[1], c.at[2]).applyMatrix4(humGroup.matrixWorld).project(camera);
-      const sx = (v3.x * 0.5 + 0.5) * W, sy = (-v3.y * 0.5 + 0.5) * H;
-      const sd = c.side === 'outer' ? outerSide : c.side === 'inner' ? -outerSide : sx >= fx ? 1 : -1;
-      const lx = fx + sd * (halfW + gap);
-      let ly = sy + c.dy * dyK;
-      ly = Math.max(70 + c.h / 2, Math.min(H - 12 - c.h / 2, ly));
-      const tx = Math.max(10, Math.min(W - 10 - c.w, sd > 0 ? lx + 6 : lx - 6 - c.w));
-      // the line always ends at the label, even when the screen edge pushes the label inward
-      const bx = sd > 0 ? Math.max(lx, tx - 6) : Math.min(lx, tx + c.w + 6);
-      const ex = bx - sd * (portrait ? 8 : 16);
-      c.path.setAttribute('d', `M${sx.toFixed(1)} ${sy.toFixed(1)} L${ex.toFixed(1)} ${ly.toFixed(1)} L${bx.toFixed(1)} ${ly.toFixed(1)}`);
-      c.ring.setAttribute('cx', sx.toFixed(1)); c.ring.setAttribute('cy', sy.toFixed(1));
-      c.pt.setAttribute('cx', sx.toFixed(1)); c.pt.setAttribute('cy', sy.toFixed(1));
-      c.el.style.transform = `translate3d(${tx.toFixed(1)}px, ${(ly - c.h / 2).toFixed(1)}px, 0)`;
+      v3.set(c.at[0], c.at[1], c.at[2] * zs).applyMatrix4(MC).project(camera);
+      const qx = (v3.x * 0.5 + 0.5) * W, qy = (-v3.y * 0.5 + 0.5) * H;
+      v3.set(c.at[0], c.at[1], c.at[2] * zs).applyMatrix4(M).project(camera);
+      const ax = (v3.x * 0.5 + 0.5) * W, ay = (-v3.y * 0.5 + 0.5) * H;
+      const dx = qx - cx, dy = qy - cy, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+      const t = rayExit(hull, cx, cy, ux, uy);
+      const px = cx + ux * (t + gap), py = cy + uy * (t + gap);
+      const b = { c, ax, ay, bx: px - c.w / 2 + (ux * c.w) / 2, by: py - c.h / 2 + (uy * c.h) / 2 };
+      // slide outwards until the label no longer covers the brain
+      for (let k = 0; k < 60 && boxHitsHull(b.bx - 4, b.by - 4, c.w + 8, c.h + 8, hull); k++) { b.bx += ux * 4; b.by += uy * 4; }
+      live.push(b);
     });
+    // keep labels apart, on screen, and clear of the text
+    const minX = !portrait && side > 0 ? textEdge : 10, maxX = !portrait && side < 0 ? W - textEdge : W - 10;
+    const minY = 66, maxY = portrait ? textTop : H - 12;
+    const fit = (b) => {
+      b.bx = Math.max(minX, Math.min(maxX - b.c.w, b.bx));
+      b.by = Math.max(minY, Math.min(maxY - b.c.h, b.by));
+    };
+    for (const b of live) fit(b);
+    for (let it = 0; it < 12; it++) {
+      for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+        const A = live[i], B = live[j];
+        const ox = Math.min(A.bx + A.c.w, B.bx + B.c.w) - Math.max(A.bx, B.bx) + 10;
+        const oy = Math.min(A.by + A.c.h, B.by + B.c.h) - Math.max(A.by, B.by) + 8;
+        if (ox <= 0 || oy <= 0) continue;
+        if (oy <= ox) { const s = A.by + A.c.h / 2 < B.by + B.c.h / 2 ? -1 : 1; A.by += (s * oy) / 2; B.by -= (s * oy) / 2; }
+        else { const s = A.bx + A.c.w / 2 < B.bx + B.c.w / 2 ? -1 : 1; A.bx += (s * ox) / 2; B.bx -= (s * ox) / 2; }
+      }
+      for (const b of live) fit(b);
+    }
+    const f = Math.min(1, dt * 9);
+    for (const b of live) {
+      const { c, ax, ay } = b;
+      if (!c.placed) { c.bx = b.bx; c.by = b.by; c.placed = true; } else { c.bx += (b.bx - c.bx) * f; c.by += (b.by - c.by) * f; }
+      // the leader runs from the lobe to the nearest point of its label
+      const ex = Math.max(c.bx, Math.min(c.bx + c.w, ax)), ey = Math.max(c.by, Math.min(c.by + c.h, ay));
+      c.path.setAttribute('d', `M${ax.toFixed(1)} ${ay.toFixed(1)} L${ex.toFixed(1)} ${ey.toFixed(1)}`);
+      c.ring.setAttribute('cx', ax.toFixed(1)); c.ring.setAttribute('cy', ay.toFixed(1));
+      c.pt.setAttribute('cx', ax.toFixed(1)); c.pt.setAttribute('cy', ay.toFixed(1));
+      c.el.style.transform = `translate3d(${c.bx.toFixed(1)}px, ${c.by.toFixed(1)}px, 0)`;
+    }
   }
 
   let raf = 0;
@@ -890,13 +1030,13 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const k = 1 - Math.pow(0.0015, dt);
     cur.x += (tgt.x - cur.x) * k; cur.y += (tgt.y - cur.y) * k; cur.s += (tgt.s - cur.s) * k; cur.yaw += (tgt.yaw - cur.yaw) * k;
     smx += (mx - smx) * Math.min(1, dt * 3); smy += (my - smy) * Math.min(1, dt * 3);
-    const amp = reduced ? 0.12 : 0.42;
+    const amp = reduced ? 0.06 : 0.2;
     humGroup.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
     humGroup.scale.setScalar(cur.s);
-    humGroup.rotation.y = cur.yaw + Math.sin(time * 0.32) * amp + smx * 0.28;
-    humGroup.rotation.x = smy * 0.05;
+    humGroup.rotation.set(smy * 0.04, smx * 0.1, 0);
+    brainG.rotation.set(0.2 + smy * 0.05, cur.yaw + Math.sin(time * 0.32) * amp + smx * 0.2, 0);
     humGroup.updateMatrixWorld();
-    uniforms.uHumM.value.copy(humGroup.matrixWorld);
+    uniforms.uHumM.value.copy(brainG.matrixWorld);
 
     netGroup.scale.setScalar(netScale);
     netGroup.rotation.set(0.12 + smy * 0.05, portrait ? time * 0.35 : 0.45 + Math.sin(time * 0.4) * 0.32 + smx * 0.2, netRz);
@@ -905,29 +1045,44 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     netMat.opacity = pal.netOp * netFade * (1 - clamp01(morph * 1.6));
 
     // the hologram prints itself from the floor up, just behind the arriving particles
-    const reveal = -1.8 + 3.62 * clamp01((morph - 0.4) / 0.52);
+    const reveal = Y_BOT - 0.06 + (Y_TOP - Y_BOT + 0.14) * clamp01((morph - 0.4) / 0.52);
     bodyU.uReveal.value = morph > 0 ? reveal : -9;
     haloU.uAlpha.value = clamp01((morph - 0.45) * 2) * (0.55 + 0.45 * fx);
     // scan band: rides the print front, then sweeps the body slowly
-    const sweep = Math.sin(time * 0.5) * 1.6 + 0.02;
+    const sweep = Math.sin(time * 0.5) * 0.92 + 0.1;
     const scanY = morph < 1 ? reveal : reveal + (sweep - reveal) * fx;
     bodyU.uScan.value = scanY;
     bodyU.uFx.value = Math.max(fx, morph > 0 && morph < 1 ? 0.6 : 0);
     uniforms.uScan.value = morph > 0 ? scanY : -9;
     scanRing.position.y = scanY;
-    const wy = scanY > 1.28 ? 0.26 : scanY > 0.95 ? 0.58 : scanY > -0.25 ? 0.7 : scanY > -1.0 ? 0.44 : 0.36;
-    const sxs = scanRing.scale.x + (wy - scanRing.scale.x) * Math.min(1, dt * 6);
-    scanRing.scale.set(sxs, 1, sxs * 0.62);
+    if (prof.length) {
+      // the ring hugs the brain's cross-section at the scan height
+      const pk = prof[Math.max(0, Math.min(prof.length - 1, Math.floor(((scanY - Y_BOT) / (Y_TOP - Y_BOT)) * prof.length)))];
+      const f = Math.min(1, dt * 6);
+      scanRing.position.x += (pk[0] - scanRing.position.x) * f;
+      scanRing.scale.x += (pk[1] + 0.08 - scanRing.scale.x) * f;
+      scanRing.scale.z += (pk[2] + 0.08 - scanRing.scale.z) * f;
+    }
 
     // nervous system & heart
     const grow = clamp01((T - T_NERVE) / D_NERVE);
     nerveU.uGrow.value = body ? (grow <= 0 ? -1 : easeOut(grow) * (maxD + 0.2)) : -1;
     nerveU.uAlpha.value = body ? clamp01(grow * 3) : 0;
     brainLinkMat.opacity = (light ? 0.35 : 0.32) * clamp01((morph - 0.75) * 4) * (0.7 + 0.3 * Math.sin(time * 2.3));
-    const beatT = (time * 1.1) % 1, b1 = Math.exp(-Math.pow(beatT / 0.07, 2)), b2 = Math.exp(-Math.pow((beatT - 0.26) / 0.06, 2)) * 0.6;
+    const beatT = (time * 0.62) % 1, b1 = Math.exp(-Math.pow(beatT / 0.09, 2)), b2 = Math.exp(-Math.pow((beatT - 0.3) / 0.08, 2)) * 0.45;
     heartU.uBeat.value = Math.max(b1, b2);
     heartU.uPhase.value = clamp01(beatT / 0.75);
-    heartU.uAlpha.value = clamp01((T - T_FORMED + 0.4) / 0.8);
+    heartU.uAlpha.value = 0.75 * clamp01((T - T_FORMED + 0.4) / 0.8);
+    // lobes: a hovered label lights its lobe; each lobe also flashes once as its label appears
+    for (let i = 0; i < lobeK.length; i++) {
+      const c = calls[i];
+      const fl = c.flashT !== null ? Math.exp(-Math.pow((time - c.flashT - 0.3) / 0.42, 2)) * 0.8 : 0;
+      const want = Math.max(hoverLobe === c.lobe ? 1 : 0, fl);
+      lobeK[i] += (want - lobeK[i]) * Math.min(1, dt * 7);
+    }
+    bodyU.uFocus.value += ((hoverLobe >= 0 ? 1 : 0) - bodyU.uFocus.value) * Math.min(1, dt * 6);
+    bodyU.uLk0.value.set(lobeK[0], lobeK[1], lobeK[2]);
+    bodyU.uLk1.value.set(lobeK[3], lobeK[4], 0);
 
     const hudIn = Math.max(fx, morph > 0 && morph < 1 ? 0.75 : 0);
     hudMat.opacity = pal.hudOp * hudIn;
@@ -939,13 +1094,13 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     dustMat.uniforms.uOpacity.value = pal.dustOp * fx;
     base.rotation.y = time * 0.15;
     // when the floor sits near the eye line (phones) tip the platform a little so it still reads as a disc
-    const floorY = humGroup.position.y - 1.75 * cur.s;
+    const floorY = humGroup.position.y + PLAT_Y * cur.s;
     platform.rotation.x = Math.max(0, 0.2 - Math.atan2(-floorY, CAM_Z));
     orbit.rotation.y = time * 0.2;
     // keep the orbit reading as an ellipse when the figure sits above the eye line (phones)
-    orbit.rotation.x = 0.32 + Math.atan2(humGroup.position.y + 0.62 * cur.s, CAM_Z);
+    orbit.rotation.x = 0.32 + Math.atan2(humGroup.position.y + ORB_Y * cur.s, CAM_Z);
     const sp = sats.geometry.attributes.position;
-    for (let i = 0; i < 3; i++) { const a = time * (0.6 + i * 0.17) + i * 2.1; sp.setXYZ(i, Math.cos(a) * 1.02, 0, Math.sin(a) * 1.02); }
+    for (let i = 0; i < 3; i++) { const a = time * (0.6 + i * 0.17) + i * 2.1; sp.setXYZ(i, Math.cos(a) * ORB_R, 0, Math.sin(a) * ORB_R); }
     sp.needsUpdate = true;
     if (fx > 0) {
       for (let i = 0; i < NBAR; i++) {
@@ -963,7 +1118,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     uniforms.uCam.value.copy(camera.position);
 
     renderer.render(scene, camera);
-    updateCallouts();
+    updateCallouts(dt);
   }
 
   setLabels(labels);
