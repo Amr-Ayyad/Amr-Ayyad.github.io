@@ -540,6 +540,9 @@ import('./scene.js')
       },
     });
     if (!scene) { body.classList.add('no-webgl'); onReady(); return; }
+    // a reload can land mid-page (the browser restores the reading position): the scene must know at once,
+    // so the hero labels stay hidden and the intro is skipped
+    onScroll();
     const dbg = /^#t=([\d.]+)$/.exec(location.hash);
     if (dbg) scene.freeze(parseFloat(dbg[1]));
     // label widths change once the web fonts arrive
