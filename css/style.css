@@ -185,92 +185,100 @@ bdi { unicode-bidi: isolate; }
 .island-menu .ic { width: 21px; height: 21px; }
 .island-menu a:last-child:nth-child(3n + 1) { grid-column: 2; }
 
-/* ── Section rail: where you are on the page, on the right edge. Wide screens get a small index
-   (every section named, the current one highlighted, a line that fills as you read). Tablets and
-   phones keep the dots low on the right, in thumb reach and clear of the text you are reading,
-   with the current section's name always shown beside its dot. ── */
+/* ── Section rail: where you are on the page. It sits on the side the page reads from: the right in Arabic,
+   the left in English. Wide screens get a small index on that edge (every section named, the current one
+   highlighted, a line that fills as you read). Tablets and phones get a glass bar at the bottom, in thumb
+   reach: every section's word in a row, the current one highlighted and kept in the middle, and a hairline
+   along the bar that fills as you read. ── */
 .rail {
-  position: fixed; z-index: 55; top: 50%; right: max(12px, env(safe-area-inset-right));
-  display: flex; flex-direction: column; align-items: center; width: 26px; padding: 7px 0; border-radius: 13px;
-  opacity: 0; visibility: hidden; pointer-events: none; transform: translate(14px, -50%);
+  position: fixed; z-index: 55; display: flex;
+  opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity .5s var(--out), transform .6s var(--out), visibility 0s linear .6s;
 }
-/* it slides in once you start scrolling, as the hero's labels fade out */
-body.rail-on:not(.intro) .rail { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(-50%); transition-delay: 0s; }
-.rail a { position: relative; display: grid; place-items: center; width: 26px; height: 22px; color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
-.rail a::after { content: ''; position: absolute; inset: 0 -6px; }
-.rail a > i {
-  position: relative; z-index: 1; width: 6px; height: 6px; border-radius: 3px; background: var(--faint);
-  transition: height .5s var(--spring), background-color .3s, box-shadow .3s, opacity .3s;
+/* it comes in once you start scrolling, as the hero's labels fade out */
+body.rail-on:not(.intro) .rail { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+.rail a { position: relative; z-index: 1; display: flex; align-items: center; color: inherit; text-decoration: none; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rail-w { display: inline-flex; flex-direction: column; line-height: 1.25; color: var(--muted); transition: color .3s; }
+/* holds the bold width, so nothing moves when the current word turns bold */
+.rail-w::after { content: attr(data-w); height: 0; overflow: hidden; visibility: hidden; font-weight: 650; }
+.rail a.done .rail-w { color: var(--text-2); }
+.rail a.cur .rail-w { color: var(--text); font-weight: 650; }
+@media (hover: hover) { .rail a:hover .rail-w { color: var(--text); } }
+.rail-track { position: absolute; border-radius: 1px; background: var(--sep); overflow: hidden; pointer-events: none; }
+.rail-track i { position: absolute; inset: 0; opacity: .55; }
+.rail-thumb {
+  position: absolute; pointer-events: none;
+  background: rgba(61, 211, 242, .1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(61, 211, 242, .16);
 }
-.rail a.done > i { background: var(--accent); opacity: .6; }
-.rail a.cur > i { height: 18px; background: var(--grad-v); opacity: 1; box-shadow: 0 0 12px -2px var(--accent); }
-.rail a:hover > i { background: var(--accent); opacity: 1; }
-.rail a.cur:hover > i { background: var(--grad-v); }
-.rail a:focus-visible { outline: none; }
-.rail a:focus-visible > i { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
-.rail-track { position: absolute; top: 18px; bottom: 18px; left: 50%; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--sep); overflow: hidden; pointer-events: none; }
-.rail-track i { position: absolute; inset: 0; background: var(--grad-v); opacity: .55; transform-origin: 50% 0; transform: scaleY(0); }
-.rail-thumb { display: none; }
-/* the current section's name, always beside its dot */
-.rail-w {
-  position: absolute; top: 50%; right: calc(100% + 10px);
-  padding: 5px 11px 6px; border-radius: 999px; white-space: nowrap;
-  font-size: 12.5px; font-weight: 600; line-height: 1.2; letter-spacing: 0; color: var(--text);
-  background: rgba(28, 28, 30, .9); border: 1px solid var(--stroke);
-  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, .7), inset 0 1px 0 var(--hi);
-  opacity: 0; transform: translate(8px, -50%); pointer-events: none;
-  transition: opacity .3s ease, transform .5s var(--spring);
-}
-:root[data-theme='light'] .rail-w { background: rgba(255, 255, 255, .94); box-shadow: 0 12px 28px -14px rgba(28, 38, 66, .35), inset 0 1px 0 #fff; }
-.rail a.cur .rail-w, .rail a:focus-visible .rail-w { opacity: 1; transform: translate(0, -50%); }
-/* pointing at another dot shows its name in place of the current one */
-@media (hover: hover) {
-  .rail a:hover .rail-w { opacity: 1; transform: translate(0, -50%); }
-  .rail:has(a:hover) a.cur:not(:hover) .rail-w { opacity: 0; transform: translate(8px, -50%); }
-}
-@media (max-width: 999px) {
-  .rail { top: auto; bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px)); transform: translateX(14px); }
-  body.rail-on:not(.intro) .rail { transform: none; }
-}
-@media (max-width: 760px) {
-  .rail { right: max(4px, env(safe-area-inset-right)); width: 16px; padding: 5px 0; border-radius: 8px; }
-  .rail a { width: 16px; height: 21px; }
-  .rail a::after { inset: -1px -6px -1px -12px; }
-  .rail a > i { width: 5px; height: 5px; border-radius: 2.5px; }
-  .rail a.cur > i { height: 14px; }
-  .rail-track { top: 15.5px; bottom: 15.5px; width: 1.5px; margin-left: -.75px; }
-  .rail-w { right: calc(100% + 8px); font-size: 12px; padding: 4px 10px 5px; }
-}
-/* wide screens: a small index with every section named */
-@media (min-width: 1000px) {
-  .rail { right: max(16px, env(safe-area-inset-right)); width: auto; align-items: stretch; padding: 6px; border-radius: 21px; }
-  .rail a { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: auto; height: 30px; padding-inline: 9px 15px; border-radius: 15px; z-index: 1; }
-  .rail a::after { inset: 0; }
-  .rail a > i { flex: none; }
-  .rail a.cur > i { height: 16px; }
-  .rail-w {
-    position: relative; top: auto; right: auto; display: inline-flex; flex-direction: column;
-    padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
-    font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--muted);
-    transition: color .3s;
+:root[data-theme='light'] .rail-thumb { background: rgba(14, 116, 144, .08); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(14, 116, 144, .14); }
+
+/* wide screens: a small index on the edge, every section named (from 1240px, where the page keeps its full layout beside it) */
+@media (min-width: 1240px) {
+  .rail {
+    top: 50%; right: max(16px, env(safe-area-inset-right)); flex-direction: column; padding: 6px; border-radius: 21px;
+    transform: translate(14px, -50%);
   }
-  :root[data-theme='light'] .rail-w { background: none; box-shadow: none; }
-  /* holds the bold width, so the index keeps its size when the current word turns bold */
-  .rail-w::after { content: attr(data-w); height: 0; overflow: hidden; visibility: hidden; font-weight: 650; }
-  .rail a .rail-w, .rail a.cur .rail-w, .rail a:hover .rail-w, .rail a:focus-visible .rail-w, .rail:has(a:hover) a.cur:not(:hover) .rail-w { opacity: 1; transform: none; }
-  .rail a.done .rail-w { color: var(--text-2); }
-  .rail a.cur .rail-w { color: var(--text); font-weight: 650; }
-  .rail a:hover .rail-w { color: var(--text); }
-  .rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .rail a:focus-visible > i { box-shadow: none; }
+  :root[dir='ltr'] .rail { right: auto; left: max(16px, env(safe-area-inset-left)); transform: translate(-14px, -50%); }
+  body.rail-on:not(.intro) .rail { transform: translateY(-50%); }
+  .rail-strip { display: contents; }
+  .rail a { gap: 10px; height: 30px; padding-inline: 9px 15px; border-radius: 15px; }
+  .rail a > i {
+    position: relative; flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--faint);
+    transition: height .5s var(--spring), background-color .3s, box-shadow .3s, opacity .3s;
+  }
+  .rail a.done > i { background: var(--accent); opacity: .6; }
+  .rail a.cur > i { height: 16px; background: var(--grad-v); opacity: 1; box-shadow: 0 0 12px -2px var(--accent); }
+  .rail a:hover > i { background: var(--accent); opacity: 1; }
+  .rail a.cur:hover > i { background: var(--grad-v); }
+  .rail-w { font-size: 13px; font-weight: 500; }
+  .rail-track { top: 21px; bottom: 21px; inset-inline-start: 17px; width: 2px; }
+  .rail-track i { background: var(--grad-v); transform-origin: 50% 0; transform: scaleY(var(--p, 0)); }
   .rail-thumb {
-    display: block; position: absolute; top: 6px; left: 6px; right: 6px; height: 30px; border-radius: 15px; pointer-events: none;
-    background: rgba(61, 211, 242, .1); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(61, 211, 242, .16);
+    top: 6px; left: 6px; right: 6px; height: 30px; border-radius: 15px;
     transform: translateY(calc(var(--i, 0) * 30px)); transition: transform .6s var(--spring);
   }
-  :root[data-theme='light'] .rail-thumb { background: rgba(14, 116, 144, .08); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(14, 116, 144, .14); }
-  .rail-track { top: 21px; bottom: 21px; left: auto; inset-inline-start: 17px; margin: 0; }
+}
+
+/* tablets, small laptops and phones: a glass bar at the bottom with every section's word */
+@media (max-width: 1239px) {
+  .rail {
+    left: 12px; right: 12px; bottom: max(14px, calc(env(safe-area-inset-bottom) + 6px));
+    width: fit-content; max-width: calc(100% - 24px); margin: 0 auto; padding: 5px; border-radius: 26px;
+    background: rgba(28, 28, 32, .94); transform: translateY(18px);
+  }
+  :root[data-theme='light'] .rail { background: rgba(255, 255, 255, .92); }
+  body.rail-on:not(.intro) .rail { transform: none; }
+  .rail-strip {
+    position: relative; display: flex; gap: 2px; min-width: 0; border-radius: 21px;
+    overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  }
+  .rail-strip::-webkit-scrollbar { display: none; }
+  .rail-strip.fl { -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px); mask-image: linear-gradient(90deg, transparent, #000 34px); }
+  .rail-strip.fr { -webkit-mask-image: linear-gradient(270deg, transparent, #000 34px); mask-image: linear-gradient(270deg, transparent, #000 34px); }
+  .rail-strip.fl.fr {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent);
+  }
+  .rail a { flex: none; height: 42px; padding-inline: 15px; border-radius: 21px; }
+  .rail a > i { display: none; }
+  .rail-w { font-size: 14px; font-weight: 500; }
+  .rail-thumb {
+    top: 0; left: 0; height: 42px; width: var(--tw, 0px); border-radius: 21px;
+    background: rgba(61, 211, 242, .15); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 0 0 1px rgba(61, 211, 242, .24);
+    transform: translateX(var(--tx, 0px)); transition: transform .55s var(--spring), width .55s var(--spring);
+  }
+  :root[data-theme='light'] .rail-thumb { background: rgba(14, 116, 144, .11); box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgba(14, 116, 144, .2); }
+  .rail-track { left: 26px; right: 26px; bottom: 1px; height: 1.5px; background: none; }
+  .rail-track i { background: var(--grad); opacity: .9; transform-origin: 0 50%; transform: scaleX(var(--p, 0)); }
+  :root[dir='rtl'] .rail-track i { transform-origin: 100% 50%; }
+}
+/* phones on their side: a slimmer bar */
+@media (max-width: 1239px) and (max-height: 500px) {
+  .rail { bottom: max(8px, env(safe-area-inset-bottom)); padding: 4px; border-radius: 22px; }
+  .rail a, .rail-thumb { height: 36px; border-radius: 18px; }
+  .rail-strip { border-radius: 18px; }
+  .rail-w { font-size: 13px; }
 }
 
 .controls {
@@ -395,7 +403,7 @@ a.co:active { box-shadow: inset 0 1px 0 var(--hi), 0 0 0 1px var(--accent); }
 /* keep the content clear of the section rail on the right edge */
 @media (min-width: 761px) { .sec, .st-sticky { width: min(1180px, calc(100% - 44px)); } }
 /* wide screens: room for the named index */
-@media (min-width: 1000px) { .sec, .st-sticky { width: min(1180px, calc(100% - 2 * var(--rail-room, 150px))); } }
+@media (min-width: 1240px) { .sec, .st-sticky { width: min(1180px, calc(100% - 2 * var(--rail-room, 150px))); } }
 .words { font-size: clamp(27px, 4.1vw, 58px); font-weight: 700; line-height: 1.32; max-width: 26ch; }
 html[lang='ar'] .words { line-height: 1.55; max-width: 24ch; }
 html[lang='en'] .words { letter-spacing: -.028em; }
@@ -524,6 +532,8 @@ html[dir='rtl'] .edu { background: radial-gradient(80% 90% at 0% 0%, rgba(103, 2
 .email { display: inline-block; margin-top: 30px; font-size: clamp(17px, 1.6vw, 21px); font-weight: 600; color: var(--muted); text-decoration: none; border-bottom: 1px solid transparent; transition: color .2s, border-color .2s; }
 .email:hover { color: var(--text); border-color: currentColor; }
 .foot { text-align: center; color: var(--muted); font-size: 13px; padding: 26px 24px max(34px, env(safe-area-inset-bottom)); border-top: 1px solid var(--sep); width: min(1180px, calc(100% - 48px)); margin: 0 auto; position: relative; z-index: 1; }
+/* tablets and phones: the page ends above the section bar */
+@media (max-width: 1239px) { .foot { padding-bottom: calc(max(34px, env(safe-area-inset-bottom)) + 72px); } }
 
 /* ── Responsive ── */
 @media (max-aspect-ratio: 23/20), (max-width: 759px) {

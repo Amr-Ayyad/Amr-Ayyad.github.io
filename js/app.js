@@ -280,18 +280,55 @@ addEventListener('keydown', (e) => {
 
 /* ───────── section rail: where you are on the page ───────── */
 const rail = $('#rail');
-let railIdx = -1, railP = -1;
+const railBarMQ = matchMedia('(max-width: 1239px)');
+let railIdx = -1, railP = -1, railTouchT = 0, railSnap = false;
 function renderRail() {
   rail.setAttribute('aria-label', u('sections'));
-  rail.innerHTML = '<span class="rail-track" aria-hidden="true"><i id="railFill"></i></span><span class="rail-thumb" aria-hidden="true"></span>' +
+  rail.innerHTML = '<span class="rail-track" aria-hidden="true"><i></i></span><div class="rail-strip"><span class="rail-thumb" aria-hidden="true"></span>' +
     SECS.map((k) => {
       const w = esc(UI[lang].nav[k]);
       return `<a href="#${k}" data-k="${k}"><i aria-hidden="true"></i><span class="rail-w" data-w="${w}">${w}</span></a>`;
-    }).join('');
+    }).join('') + '</div>';
+  const strip = rail.lastElementChild;
+  // while the reader swipes through the words, the bar leaves the row where they put it
+  const touched = () => { railTouchT = performance.now(); };
+  strip.addEventListener('pointerdown', touched, { passive: true });
+  strip.addEventListener('touchmove', touched, { passive: true });
+  strip.addEventListener('wheel', touched, { passive: true });
+  strip.addEventListener('click', () => { railTouchT = 0; });
+  strip.addEventListener('scroll', railFades, { passive: true });
   railIdx = -1;
   railP = -1;
+  railSnap = true;
   updateSections();
+  railSnap = false;
 }
+// Tablets and phones: the bar slides its highlight under the current word and keeps that word in the middle
+function railBar(smooth) {
+  if (!railBarMQ.matches || railIdx < 0) return;
+  const strip = rail.querySelector('.rail-strip');
+  const a = strip && strip.querySelectorAll('a')[railIdx];
+  if (!a) return;
+  const sr = strip.getBoundingClientRect(), ar = a.getBoundingClientRect();
+  rail.style.setProperty('--tx', `${(ar.left - sr.left - strip.clientLeft + strip.scrollLeft).toFixed(1)}px`);
+  rail.style.setProperty('--tw', `${ar.width.toFixed(1)}px`);
+  if (performance.now() - railTouchT > 1500) {
+    const d = ar.left + ar.width / 2 - (sr.left + sr.width / 2);
+    if (Math.abs(d) > 1) strip.scrollBy({ left: d, behavior: smooth && !reduced ? 'smooth' : 'auto' });
+  }
+  railFades();
+}
+// fade the row's edge on a side where more words wait out of view
+function railFades() {
+  const s = rail.querySelector('.rail-strip');
+  if (!s) return;
+  const max = s.scrollWidth - s.clientWidth;
+  const left = doc.dir === 'rtl' ? s.scrollLeft + max : s.scrollLeft;
+  s.classList.toggle('fl', max > 1 && left > 2);
+  s.classList.toggle('fr', max > 1 && left < max - 2);
+}
+railBarMQ.addEventListener('change', () => railBar(false));
+addEventListener('resize', () => railBar(false));
 // A section becomes current once its top passes 45% of the screen (the first one from the top of the page).
 // The island and the rail both follow it, and the rail's line fills from one section's dot to the next
 // as you read through it, so it always shows how far down the page you are.
@@ -323,11 +360,12 @@ function updateSections() {
       curSec = SECS[idx];
       if (iState === 'nav') islandSection();
     }
+    railBar(!railSnap);
   }
   const v = Math.min(1, p / (n - 1));
   if (Math.abs(v - railP) > 0.0005) {
     railP = v;
-    document.getElementById('railFill').style.transform = `scaleY(${v.toFixed(4)})`;
+    rail.style.setProperty('--p', v.toFixed(4));
   }
 }
 
@@ -385,7 +423,7 @@ function setLang(l) {
   scene?.setLang(l, calloutLabels());
   onScroll();
   // the other script's font may arrive a moment later: re-measure the island and the labels
-  if (document.fonts) document.fonts.ready.then(() => { fitIsland(); scene?.relayout(); });
+  if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); scene?.relayout(); });
 }
 $('#swTheme').addEventListener('click', (e) => withTransition(() => setTheme(theme === 'dark' ? 'light' : 'dark'), e.currentTarget));
 $('#swLang').addEventListener('click', () => withTransition(() => setLang(lang === 'ar' ? 'en' : 'ar')));
@@ -454,7 +492,7 @@ renderAll();
 syncSwitches();
 islandIntro();
 onScroll();
-if (document.fonts) document.fonts.ready.then(fitIsland);
+if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
 import('./scene.js')
