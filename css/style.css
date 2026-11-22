@@ -12,7 +12,6 @@
 @font-face { font-family: 'Plex Arabic'; font-weight: 600; font-display: swap; src: url(../assets/fonts/plex-arabic-600.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
 @font-face { font-family: 'Plex Arabic'; font-weight: 700; font-display: swap; src: url(../assets/fonts/plex-arabic-700.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC; }
 
-@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 
 :root {
   --bg: #000;
@@ -101,18 +100,6 @@ bdi { unicode-bidi: isolate; }
 @keyframes drift { to { transform: translate3d(5vmax, 4vmax, 0) scale(1.1); } }
 #gl { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100lvh; z-index: -1; pointer-events: none; display: block; }
 
-/* intro glow around the screen edge */
-.siri { position: fixed; inset: 0; z-index: 70; pointer-events: none; opacity: 0; transition: opacity 1.4s ease; }
-.siri.on { opacity: 1; }
-.siri::before, .siri::after {
-  content: ''; position: absolute; inset: 0; padding: 3px;
-  background: conic-gradient(from var(--ang), #a5f3fc, #22d3ee, #38bdf8, #2563eb, #7dd3fc, #e0fbff, #a5f3fc);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: spin 3.2s linear infinite;
-}
-.siri::after { padding: 16px; filter: blur(22px); opacity: .75; }
-@keyframes spin { to { --ang: 360deg; } }
 
 /* ── Glass ── */
 /* Thick Liquid Glass panels, like an iPhone folder: the body is frosted, the edge reads as a rounded
@@ -122,53 +109,51 @@ bdi { unicode-bidi: isolate; }
    mouse (app.js), so the edges glint as the pointer moves. */
 .glass {
   position: relative; isolation: isolate;
-  background: linear-gradient(150deg, rgba(125, 225, 245, .11), rgba(125, 225, 245, 0) 36%, rgba(34, 211, 238, 0) 70%, rgba(34, 211, 238, .06)), var(--glass);
+  background: linear-gradient(150deg, rgba(34, 211, 238, .1), rgba(34, 211, 238, 0) 36%, rgba(6, 182, 212, 0) 70%, rgba(6, 182, 212, .07)), var(--glass);
   -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(125, 225, 245, .12);
+  border: 1px solid rgba(34, 211, 238, .16);
   box-shadow: var(--shadow),
-    inset 0 1px 0 rgba(180, 242, 255, .38),
-    inset 0 4px 2px -3px rgba(165, 243, 252, .3),
-    inset 0 16px 24px -16px rgba(125, 225, 245, .3),
-    inset 0 -16px 26px -16px rgba(34, 211, 238, .26),
-    inset 16px 0 24px -18px rgba(125, 225, 245, .16),
-    inset -16px 0 24px -18px rgba(94, 227, 247, .11),
-    inset 0 -4px 2px -3px rgba(94, 227, 247, .24),
-    inset 0 -1px 0 rgba(125, 225, 245, .12);
+    inset 0 1px 0 rgba(61, 211, 242, .55),
+    inset 0 4px 2px -3px rgba(34, 211, 238, .4),
+    inset 0 16px 24px -16px rgba(34, 211, 238, .32),
+    inset 0 -16px 26px -16px rgba(6, 182, 212, .32),
+    inset 16px 0 24px -18px rgba(34, 211, 238, .2),
+    inset -16px 0 24px -18px rgba(14, 165, 233, .14),
+    inset 0 -4px 2px -3px rgba(6, 182, 212, .32),
+    inset 0 -1px 0 rgba(34, 211, 238, .2);
 }
 /* the rim: aqua glass, brightest where it faces the light */
 .glass::before {
   content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; z-index: 1; padding: 1.6px;
   background: conic-gradient(from var(--la, 315deg),
-    rgba(200, 248, 255, .9), rgba(94, 227, 247, .6) 7%, rgba(61, 211, 242, .08) 20%, rgba(125, 211, 252, .2) 36%,
-    rgba(165, 243, 252, .55) 50%, rgba(34, 211, 238, .32) 57%, rgba(61, 211, 242, .06) 72%, rgba(165, 243, 252, .5) 92%, rgba(200, 248, 255, .9));
+    rgba(94, 234, 250, .95), rgba(34, 211, 238, .75) 7%, rgba(8, 145, 178, .18) 20%, rgba(14, 165, 233, .28) 36%,
+    rgba(45, 212, 238, .7) 50%, rgba(6, 182, 212, .45) 57%, rgba(8, 145, 178, .14) 72%, rgba(34, 211, 238, .6) 92%, rgba(94, 234, 250, .95));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  opacity: .95;
 }
 .glass::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(125, 225, 245, .12), transparent 46%);
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(34, 211, 238, .12), transparent 46%);
   opacity: 0; transition: opacity .5s;
 }
 .glass:hover::after { opacity: 1; }
 :root[data-theme='light'] .glass {
-  background: linear-gradient(150deg, rgba(236, 254, 255, .85), rgba(236, 254, 255, 0) 42%, rgba(165, 243, 252, 0) 70%, rgba(165, 243, 252, .18)), var(--glass);
-  border-color: rgba(8, 145, 178, .14);
+  background: linear-gradient(150deg, rgba(207, 250, 254, .8), rgba(207, 250, 254, 0) 42%, rgba(103, 232, 249, 0) 70%, rgba(103, 232, 249, .16)), var(--glass);
+  border-color: rgba(6, 182, 212, .22);
   box-shadow: var(--shadow),
-    inset 0 1px 0 rgba(255, 255, 255, .95),
-    inset 0 14px 22px -16px rgba(207, 250, 254, .95),
-    inset 0 -14px 24px -16px rgba(8, 145, 178, .16),
-    inset 14px 0 22px -18px rgba(165, 243, 252, .55),
-    inset -14px 0 22px -18px rgba(165, 243, 252, .4),
-    inset 0 -4px 2px -3px rgba(34, 211, 238, .18);
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    inset 0 14px 22px -16px rgba(103, 232, 249, .45),
+    inset 0 -14px 24px -16px rgba(8, 145, 178, .2),
+    inset 14px 0 22px -18px rgba(103, 232, 249, .35),
+    inset -14px 0 22px -18px rgba(34, 211, 238, .25),
+    inset 0 -4px 2px -3px rgba(6, 182, 212, .28);
 }
 :root[data-theme='light'] .glass::before {
   background: conic-gradient(from var(--la, 315deg),
-    #fff, rgba(165, 243, 252, .95) 8%, rgba(34, 211, 238, .35) 22%, rgba(8, 145, 178, .16) 36%,
-    rgba(207, 250, 254, .9) 50%, rgba(34, 211, 238, .4) 58%, rgba(8, 145, 178, .14) 74%, rgba(165, 243, 252, .85) 92%, #fff);
-  opacity: 1;
+    rgba(34, 211, 238, .95), rgba(6, 182, 212, .75) 8%, rgba(8, 145, 178, .25) 22%, rgba(14, 116, 144, .18) 36%,
+    rgba(34, 211, 238, .8) 50%, rgba(6, 182, 212, .5) 58%, rgba(14, 116, 144, .16) 74%, rgba(34, 211, 238, .75) 92%, rgba(34, 211, 238, .95));
 }
-:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(207, 250, 254, .8), transparent 46%); }
+:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(165, 243, 252, .7), transparent 46%); }
 
 /* ── Status bar · Dynamic Island · switches ── */
 .statusbar {
@@ -718,7 +703,7 @@ html[dir='rtl'] .edu { background: radial-gradient(80% 90% at 0% 0%, rgba(103, 2
   :root, :root[data-theme='light'] { --bg: #fff; --text: #111; --text-2: #222; --muted: #555; --stroke: #ddd; --sep: #e5e5e5; --glass: #fff; --glass-2: #f4f4f4; --accent: #0e7490; }
   :root, :root[data-theme] { color-scheme: light !important; }
   html, body { background: #fff !important; color: #111; }
-  .ambient, #gl, .siri, .callouts, .statusbar, .island-menu, .rail, .skip, .scroll-cue, .home, .spark, .seals, .stat-ic { display: none !important; }
+  .ambient, #gl, .callouts, .statusbar, .island-menu, .rail, .skip, .scroll-cue, .home, .spark, .seals, .stat-ic { display: none !important; }
   .rv, .hero-text > * { opacity: 1 !important; transform: none !important; filter: none !important; }
   .glass { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border: 1px solid #ddd; }
   .glass::before, .glass::after { display: none; }

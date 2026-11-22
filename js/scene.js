@@ -1176,7 +1176,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     if (scrollK >= 0.999 && frameNo % 2) return; // half rate when it's only a backdrop
     time += dt;
     first = false;
-    if (freezeT === null) T += Math.min(rawDt, 0.25) * speed; else T = freezeT;
+    // the story plays a little brisker than its own timings (about 4.6 s from the network to the labels)
+    if (freezeT === null) T += Math.min(rawDt, 0.25) * speed * (T < T_END ? 1.4 : 1); else T = freezeT;
     // the move from the front of the page to the backdrop eases after the scroll instead of tracking each
     // scroll event, and the canvas fades with it
     sk = reduced ? scrollK : sk + (scrollK - sk) * (1 - Math.exp(-Math.min(rawDt, 0.25) * 7));

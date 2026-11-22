@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122193136';
-import { icon } from './icons.js?v=20261122193136';
+import { CV, UI } from './data.js?v=20261122201419';
+import { icon } from './icons.js?v=20261122201419';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -525,7 +525,6 @@ function onReady() {
   ready = true;
   body.classList.remove('intro');
   body.classList.add('ready');
-  $('#siri').classList.remove('on');
   islandAvailable();
 }
 
@@ -534,9 +533,8 @@ syncSwitches();
 islandIntro();
 onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
-if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js?v=20261122193136')
+import('./scene.js?v=20261122201419')
   .then((m) => {
     scene = m.createScene({
       canvas,
@@ -549,7 +547,6 @@ import('./scene.js?v=20261122193136')
       // (the canvas covers the tallest viewport, so this follows where the text really is)
       getReserve: () => canvas.clientHeight - ($('#heroText').getBoundingClientRect().top + scrollY) + 4,
       onPhase: (name) => {
-        if (name === 'formed') $('#siri').classList.remove('on');
         if (name === 'ready') onReady();
       },
     });
