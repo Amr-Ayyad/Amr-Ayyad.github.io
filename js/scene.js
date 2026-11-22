@@ -320,13 +320,16 @@ float zapArcs(vec3 p){
   float st = floor(uTime * 15.0);
   vec3 q = p * 4.2 + vec3(st * 1.73, st * 2.31, st * 0.97);
   float n = vnoise(q) * 0.65 + vnoise(q * 2.3 + 7.1) * 0.35;
-  float w = fwidth(n) * 1.3 + 0.004;
-  float arc = 1.0 - smoothstep(0.0, w, abs(n - 0.5));
-  float flick = 0.55 + 0.45 * hash3(vec3(st, 3.0, 9.0));
+  float arc = 1.0 - smoothstep(0.0, fwidth(n) * 2.2 + 0.007, abs(n - 0.5));
+  // a second, coarser set of bolts on its own rhythm
+  float st2 = floor(uTime * 9.0 + 0.5);
+  float n2 = vnoise(p * 2.4 + vec3(st2 * 2.9, st2 * 1.1, st2 * 3.7));
+  arc = max(arc, 1.0 - smoothstep(0.0, fwidth(n2) * 2.6 + 0.009, abs(n2 - 0.5)));
+  float flick = 0.6 + 0.4 * hash3(vec3(st, 3.0, 9.0));
   float zd = length(p - uZapP);
-  float near = exp(-zd * zd * 2.2);
-  float wave = exp(-pow((zd - uZapT * 1.9) * 6.0, 2.0)) * exp(-uZapT * 1.4);
-  return uZap * (arc * flick * (0.25 + 1.1 * near) + wave * 0.7 + near * 0.12);
+  float near = exp(-zd * zd * 1.1);
+  float wave = exp(-pow((zd - uZapT * 1.9) * 5.0, 2.0)) * exp(-uZapT * 1.1);
+  return uZap * (arc * flick * (0.6 + 1.0 * near) + wave * 0.4 + near * 0.05);
 }
 float contour(float c){
   float fw = fwidth(c);
@@ -359,11 +362,11 @@ void main(){
       + uLine * sb * (0.05 + 0.5 * ln) + uEdge * sb * ln * 0.2
       + (uLine * 0.8 + uEdge * 0.5) * edge
       + (line * 0.6 + uEdge * 0.22) * hot * (0.14 + 0.85 * ln + 0.75 * fres) * ao
-      + (vec3(0.72, 0.96, 1.0) + uEdge * 0.4) * zap;
+      + (vec3(0.85, 0.98, 1.0) * 1.25 + uEdge * 0.5) * zap;
     gl_FragColor = glow(col * uAlpha);
   } else {
     float a = (0.05 + 0.16 * fres) * ao * key + ln * (0.14 + 0.22 * fres) * ao + mj * 0.1 + fres * 0.2 + sb * (0.04 + 0.26 * ln) + edge * 0.7
-      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zap * 0.85;
+      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zap * 0.9;
     vec3 lc = mix(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), uEdge, clamp(zap, 0.0, 1.0));
     gl_FragColor = vec4(lc, clamp(a, 0.0, 0.95) * uAlpha);
   }
@@ -1026,10 +1029,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
       }
       zapTap = false;
     } else if (zapAsk) { zapAsk = null; zapOn = false; zapTap = false; }
-    zapKick = Math.max(0, zapKick - dt / 1.3);
+    zapKick = Math.max(0, zapKick - dt / 1.8);
     const want = Math.max(zapOn ? 1 : 0, zapKick);
     // the shock arrives at once and fades out more gently
-    zapLevel += (want - zapLevel) * Math.min(1, dt * (want > zapLevel ? 14 : 3.2));
+    zapLevel += (want - zapLevel) * Math.min(1, dt * (want > zapLevel ? 14 : 2.4));
     bodyU.uZap.value = zapLevel < 0.003 ? 0 : zapLevel;
     bodyU.uZapT.value = time - zapT0;
     if (zapOn && time - zapT0 > 1.6) zapT0 = time; // keep the waves coming while the pointer rests there
@@ -1164,7 +1167,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const kf = Math.min(1, dt * 7);
     for (const k in hotK) hotK[k] += (hot[k] - hotK[k]) * kf;
     uniforms.uHotRaw.value = hotK.raw;
-    zapUpdate(dt);
+    zapUpdate(Math.min(rawDt, 0.25));
     uniforms.uHotBrain.value = Math.max(hotK.brain, zapLevel * 0.6);
     bodyU.uHot.value = Math.max(hotK.brain, zapLevel * 0.4, ...calls.filter((c) => c.k === 'brain').map((c) => (c.flashT !== null ? Math.exp(-Math.pow((time - c.flashT - 0.3) / 0.42, 2)) * 0.7 : 0)));
     uniforms.uHotA.value.set(hotK.o1, 0, hotK.o2, 0); uniforms.uHotB.value = hotK.o3;
@@ -1173,8 +1176,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     // layout easing and pose
     const k = 1 - Math.pow(0.0015, dt);
     cur.x += (tgt.x - cur.x) * k; cur.y += (tgt.y - cur.y) * k; cur.s += (tgt.s - cur.s) * k; cur.rot += (tgt.rot - cur.rot) * k;
-    // the figure follows the pointer slowly (about a second to catch up), never snapping
-    const follow = 1 - Math.exp(-dt * 1.3);
+    // the figure follows the pointer smoothly (about a third of a second), in real time even at low fps
+    const follow = 1 - Math.exp(-Math.min(rawDt, 0.25) * 3.2);
     smx += (mx - smx) * follow; smy += (my - smy) * follow;
     const idle = reduced ? 0 : Math.sin(time * 0.23) * 0.06;
     flow.position.set(cur.x, cur.y + scrollK * 0.9 * cur.s, 0);
@@ -1188,7 +1191,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const L = uniforms.uAxL.value;
     const reveal = -0.06 + (L + 0.14) * clamp01((morph - 0.35) / 0.55);
     bodyU.uReveal.value = morph > 0 ? reveal : -9;
-    haloU.uAlpha.value = clamp01((morph - 0.45) * 2) * (0.55 + 0.45 * fx);
+    haloU.uAlpha.value = clamp01((morph - 0.45) * 2) * (0.55 + 0.45 * fx + zapLevel * 0.5);
     // a band of light rides the print front, then keeps running through the brain with the data
     const sweep = ((time * 0.32) % 1.4) * (L + 0.5) - 0.25;
     bodyU.uScan.value = morph < 1 ? reveal : reveal + (sweep - reveal) * fx;
