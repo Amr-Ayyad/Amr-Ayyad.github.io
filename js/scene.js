@@ -658,6 +658,8 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   setTheme(theme);
 
   // ── callouts (DOM) ──
+  // phones: labels clear the hands (x 0.545, fingers to about 0.6) by GAP_P pixels
+  const ARM_P = 0.62, GAP_P = 10;
   const CALLS = [
     { k: 'brain', at: [0.0, 1.62, 0.0], side: 'outer', dy: -46, m: true },
     { k: 'heart', at: [0.085, 0.88, 0.25], side: 'inner', dy: -34, m: false },
@@ -702,8 +704,33 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     }
     measure();
   }
+  // a label that wraps is shrunk to its longest line, so the chevron sits right after the text
+  const rng = document.createRange();
   function measure() {
-    for (const c of calls) { c.w = c.el.offsetWidth; c.h = c.el.offsetHeight; }
+    for (const c of calls) {
+      const el = c.el;
+      el.style.width = '';
+      if (portrait && el.firstChild) {
+        const lines = [];
+        const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let n; (n = tw.nextNode());) {
+          rng.selectNodeContents(n);
+          for (const q of rng.getClientRects()) {
+            if (q.width < 0.5) continue;
+            const mid = (q.top + q.bottom) / 2;
+            const L = lines.find((l) => mid >= l.t && mid <= l.b);
+            if (L) { L.l = Math.min(L.l, q.left); L.r = Math.max(L.r, q.right); } else lines.push({ t: q.top, b: q.bottom, l: q.left, r: q.right });
+          }
+        }
+        if (lines.length > 1) {
+          const cs = getComputedStyle(el);
+          const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+          const need = Math.ceil(Math.max(...lines.map((l) => l.r - l.l)) + pad + 1);
+          if (need < el.offsetWidth) el.style.width = need + 'px';
+        }
+      }
+      c.w = el.offsetWidth; c.h = el.offsetHeight;
+    }
   }
 
   // ── layout ──
@@ -723,6 +750,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
       netScale = Math.min(1, vw / 6.6); netRz = 0;
       calloutsEl.style.removeProperty('--co-max');
       calloutsEl.classList.remove('compact');
+      for (const c of calls) c.el.style.maxWidth = '';
     } else {
       const reserve = getReserve ? getReserve() : H * 0.42;
       const top = 70, bottom = H - reserve - 22;
@@ -734,10 +762,13 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
       const centerPx = top + fig / 2 - Math.min(slack / 2, 0.15 * s * ppw);
       tgt.s = s; tgt.x = 0; tgt.y = (H / 2 - centerPx) / ppw + 0.02 * s; tgt.yaw = 0;
       netScale = Math.min(0.56, (vw * 0.9) / 3.1); netRz = Math.PI / 2;
-      // room beside the arms (widest point, unrotated) so labels never leave the screen
-      const room = Math.floor(W / 2 - 0.66 * s * ppw - 12 - 6 - 10);
+      // room beside the hands (widest point, unrotated) so labels never leave the screen;
+      // the brain label sits beside the head, which leaves it much more room
+      const room = Math.floor(W / 2 - ARM_P * s * ppw - GAP_P - 6 - 10);
+      const headRoom = Math.floor(W / 2 - 0.2 * s * ppw - GAP_P - 6 - 10);
       calloutsEl.style.setProperty('--co-max', Math.max(64, room) + 'px');
       calloutsEl.classList.toggle('compact', room < 130);
+      for (const c of calls) c.el.style.maxWidth = c.side === 'outer' ? Math.max(64, headRoom) + 'px' : '';
     }
     // contour spacing follows the on-screen size (about 8–9 device pixels apart)
     const pxPerUnit = ppw * tgt.s * dpr;
@@ -793,10 +824,10 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     humGroup.updateMatrixWorld();
     v3.set(0, 0, 0).applyMatrix4(humGroup.matrixWorld).project(camera);
     const fx = (v3.x * 0.5 + 0.5) * W;
-    v4.set(0.66, 0, 0).applyMatrix4(humGroup.matrixWorld).project(camera);
+    v4.set(portrait ? ARM_P : 0.66, 0, 0).applyMatrix4(humGroup.matrixWorld).project(camera);
     const halfW = Math.abs((v4.x * 0.5 + 0.5) * W - fx);
     const outerSide = portrait ? -1 : fx < W / 2 ? -1 : 1;
-    const gap = portrait ? 12 : 30;
+    const gap = portrait ? GAP_P : 30;
     const dyK = portrait ? 0.62 : 1;
     calls.forEach((c, i) => {
       const allowed = (!portrait || c.m) && !!body;
@@ -812,11 +843,13 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
       const lx = fx + sd * (halfW + gap);
       let ly = sy + c.dy * dyK;
       ly = Math.max(70 + c.h / 2, Math.min(H - 12 - c.h / 2, ly));
-      const ex = lx - sd * (portrait ? 8 : 16);
-      c.path.setAttribute('d', `M${sx.toFixed(1)} ${sy.toFixed(1)} L${ex.toFixed(1)} ${ly.toFixed(1)} L${lx.toFixed(1)} ${ly.toFixed(1)}`);
+      const tx = Math.max(10, Math.min(W - 10 - c.w, sd > 0 ? lx + 6 : lx - 6 - c.w));
+      // the line always ends at the label, even when the screen edge pushes the label inward
+      const bx = sd > 0 ? Math.max(lx, tx - 6) : Math.min(lx, tx + c.w + 6);
+      const ex = bx - sd * (portrait ? 8 : 16);
+      c.path.setAttribute('d', `M${sx.toFixed(1)} ${sy.toFixed(1)} L${ex.toFixed(1)} ${ly.toFixed(1)} L${bx.toFixed(1)} ${ly.toFixed(1)}`);
       c.ring.setAttribute('cx', sx.toFixed(1)); c.ring.setAttribute('cy', sy.toFixed(1));
       c.pt.setAttribute('cx', sx.toFixed(1)); c.pt.setAttribute('cy', sy.toFixed(1));
-      const tx = Math.max(10, Math.min(W - 10 - c.w, sd > 0 ? lx + 6 : lx - 6 - c.w));
       c.el.style.transform = `translate3d(${tx.toFixed(1)}px, ${(ly - c.h / 2).toFixed(1)}px, 0)`;
     });
   }

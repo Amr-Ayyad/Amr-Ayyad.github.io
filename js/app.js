@@ -332,7 +332,8 @@ function setLang(l) {
   refreshIsland();
   scene?.setLang(l, calloutLabels());
   onScroll();
-  if (document.fonts) document.fonts.ready.then(fitIsland);
+  // the other script's font may arrive a moment later: re-measure the island and the labels
+  if (document.fonts) document.fonts.ready.then(() => { fitIsland(); scene?.relayout(); });
 }
 $('#swTheme').addEventListener('click', (e) => withTransition(() => setTheme(theme === 'dark' ? 'light' : 'dark'), e.currentTarget));
 $('#swLang').addEventListener('click', () => withTransition(() => setLang(lang === 'ar' ? 'en' : 'ar')));
