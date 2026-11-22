@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122153939';
-import { icon } from './icons.js?v=20261122153939';
+import { CV, UI } from './data.js?v=20261122154940';
+import { icon } from './icons.js?v=20261122154940';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -23,6 +23,7 @@ const SEC_ICON = { home: 'person', about: 'quote', numbers: 'chart', work: 'case
 const SECS = Object.keys(SEC_ICON);
 const SPARK = [0.2, 0.28, 0.24, 0.36, 0.32, 0.46, 0.42, 0.55, 0.5, 0.64, 0.6, 0.74, 0.7, 0.86, 0.82, 1];
 const STAT_ICON = [null, 'gauge', 'scale', 'seal'];
+const STAT_GRAD = [null, ['#8be9fb', '#1597c9'], ['#7cc4ff', '#2f6fb5'], null];
 
 /* ───────── rendering ───────── */
 const counted = new Set();
@@ -75,7 +76,7 @@ function renderStats() {
         const seals = CV.certs.map((c, j) => `<span style="--j:${j}">${sq(c.icon, c.grad, 'mini')}</span>`).join('');
         return `<article class="stat glass rv wide" style="--i:${i}" data-i="${i}">${text}<div class="seals" aria-hidden="true">${seals}</div></article>`;
       }
-      return `<article class="stat glass rv" style="--i:${i}" data-i="${i}"><span class="stat-ic" aria-hidden="true">${icon(STAT_ICON[i])}</span>${text}</article>`;
+      return `<article class="stat glass rv" style="--i:${i}" data-i="${i}"><span class="stat-ic" aria-hidden="true">${sq(STAT_ICON[i], STAT_GRAD[i], 'sm')}</span>${text}</article>`;
     })
     .join('');
 }
@@ -526,7 +527,7 @@ onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 if (!reduced) $('#siri').classList.add('on');
 
-import('./scene.js?v=20261122153939')
+import('./scene.js?v=20261122154940')
   .then((m) => {
     scene = m.createScene({
       canvas,

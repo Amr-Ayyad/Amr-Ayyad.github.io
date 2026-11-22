@@ -314,17 +314,40 @@ float vnoise(vec3 p){
   return mix(mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x), mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
              mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + 1.0), f.x), f.y), f.z);
 }
-// electricity: hairline sparks that flicker across the cortex right around the pointer, plus a
-// faint ring running out from it; the real show is the impulses racing along the fibres (N_FRAG)
-float zapArcs(vec3 p){
-  float st = floor(uTime * 24.0);
-  vec3 q = p * 5.5 + vec3(st * 1.73, st * 2.31, st * 0.97);
-  float n = vnoise(q) * 0.7 + vnoise(q * 2.7 + 7.1) * 0.3;
-  float arc = 1.0 - smoothstep(0.0, fwidth(n) * 0.9 + 0.0015, abs(n - 0.5));
-  float zd = length(p - uZapP);
-  float near = exp(-zd * zd * 3.2);
-  float wave = exp(-pow((zd - uZapT * 2.2) * 11.0, 2.0)) * exp(-uZapT * 1.6);
-  return uZap * (arc * near * (0.35 + 0.25 * hash3(vec3(st, 3.0, 9.0))) + wave * 0.16 + near * 0.025);
+// electricity: bolts of light that branch out from where the pointer touches the cortex, each
+// stroke lasting a split second before a new pattern fires, with a bright synapse at the centre
+// and a glow around every filament (thin cores, tinted light, no white blow-out)
+vec2 zapArcs(vec3 p){
+  vec3 r = p - uZapP;
+  float zd = length(r);
+  if (zd > 1.25) return vec2(0.0);
+  vec3 dir = r / max(zd, 1e-4);
+  float st = floor(uTime * 16.0);
+  vec3 o = vec3(st * 1.73, st * 2.31, st * 0.97);
+  float flick = 0.72 + 0.28 * hash3(vec3(st, 3.0, 9.0));
+  // noise mostly over the direction: its isolines run outwards like bolts and wiggle on the way
+  vec3 q = dir * 2.6 + r * 2.2 + o;
+  float n = vnoise(q) * 0.7 + vnoise(q * 2.9 + 5.3) * 0.3;
+  float fw = fwidth(n);
+  float ok = clamp((0.35 - fw) * 4.0, 0.0, 1.0);
+  float d = abs(n - 0.5);
+  float core = (1.0 - smoothstep(0.0, fw * 1.2 + 0.003, d)) * ok;
+  float halo = exp(-d / (fw * 3.0 + 0.02)) * ok;
+  // finer side branches
+  vec3 q2 = dir * 5.5 + r * 4.0 + o * 1.37 + 11.0;
+  float n2 = vnoise(q2);
+  float fw2 = fwidth(n2);
+  float d2 = abs(n2 - 0.5);
+  float core2 = (1.0 - smoothstep(0.0, fw2 * 1.1 + 0.002, d2)) * clamp((0.35 - fw2) * 4.0, 0.0, 1.0);
+  // every bolt has its own length this stroke
+  float len = 0.32 + 0.5 * vnoise(dir * 3.1 + o * 0.7 + 2.0);
+  float reach = 1.0 - smoothstep(len * 0.45, len, zd);
+  float reach2 = 1.0 - smoothstep(len * 0.25, len * 0.7, zd);
+  float spot = exp(-zd * zd * 140.0);
+  float wave = exp(-pow((zd - uZapT * 1.6) * 9.0, 2.0)) * exp(-uZapT * 1.5);
+  float c = (core * reach + core2 * reach2 * 0.6) * flick + spot * 0.55;
+  float g = halo * reach * 0.5 * flick + exp(-zd * zd * 18.0) * 0.22 + wave * 0.3;
+  return uZap * vec2(c, g);
 }
 float contour(float c){
   float fw = fwidth(c);
@@ -347,7 +370,8 @@ void main(){
   vec3 line = mix(uLine, vTint, 0.42);
   vec3 fill = mix(uFill, vTint, 0.3);
   float hot = uHot;
-  float zap = uZap > 0.001 ? zapArcs(vP) : 0.0;
+  vec2 zz = uZap > 0.001 ? zapArcs(vP) : vec2(0.0);
+  float zap = zz.x + zz.y;
   float key = 0.75 + 0.25 * clamp(dot(n, normalize(vec3(-0.35, 0.75, 0.55))), 0.0, 1.0);
   if (uLight < 0.5) {
     vec3 col = fill * (0.06 + 0.3 * fres) * ao * key
@@ -357,13 +381,13 @@ void main(){
       + uLine * sb * (0.05 + 0.5 * ln) + uEdge * sb * ln * 0.2
       + (uLine * 0.8 + uEdge * 0.5) * edge
       + (line * 0.6 + uEdge * 0.22) * hot * (0.14 + 0.85 * ln + 0.75 * fres) * ao
-      + (uEdge * 0.7 + uLine * 0.5) * zap;
+      + vec3(0.78, 0.97, 1.0) * zz.x * 1.05 + (uLine * 0.85 + uEdge * 0.2) * zz.y;
     gl_FragColor = glow(col * uAlpha);
   } else {
     // on a light page the glass needs firmer lines and a deeper body to hold its shape
     float a = (0.17 + 0.3 * fres) * ao * key + ln * (0.6 + 0.3 * fres) * ao + mj * 0.36 + fres * 0.46 + sb * (0.08 + 0.4 * ln) + edge * 0.7
-      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zap * 0.8;
-    vec3 lc = mix(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), uEdge, clamp(zap, 0.0, 1.0));
+      + hot * (0.08 + 0.32 * ln + 0.22 * fres) * ao + zz.x * 1.2 + zz.y * 0.55;
+    vec3 lc = mix(mix(mix(line, uRim, fres), vTint, 0.25 + hot * 0.4), uEdge, clamp(zap * 1.4, 0.0, 1.0));
     gl_FragColor = vec4(lc, clamp(a, 0.0, 0.95) * uAlpha);
   }
 }`;
@@ -386,16 +410,19 @@ uniform float uAx0;
 attribute float aD;
 varying float vD;
 varying float vF;
+varying vec3 vQ;
 void main(){
   vD = dot(position, uAx) - uAx0;
   vF = aD;
+  vQ = position;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 const N_FRAG = /* glsl */ `${GLOW}
 uniform float uTime, uGrow, uAlpha, uLight, uTipEnd, uZap;
-uniform vec3 uCol, uPulse;
+uniform vec3 uCol, uPulse, uZapP;
 varying float vD;
 varying float vF;
+varying vec3 vQ;
 void main(){
   if (vD > uGrow) discard;
   float tip = exp(-pow((uGrow - vD) * 5.0, 2.0)) * step(uGrow, uTipEnd);
@@ -405,10 +432,11 @@ void main(){
   // shocked: every fibre fires fast impulses and flickers
   float zs = floor(uTime * 15.0);
   float zf = fract(sin(dot(vec2(zs, floor(vF * 9.0)), vec2(12.9898, 78.233))) * 43758.5453);
-  // shocked: short, quick impulses race along every fibre (calm in brightness, fast in motion)
-  float zph = fract(vD * 2.3 + vF * 3.1 - uTime * 4.2);
-  float zp = smoothstep(0.9, 0.985, zph) * (1.0 - smoothstep(0.985, 1.0, zph)) * uZap * (0.6 + 0.4 * zf);
-  pulse = max(pulse, zp);
+  // shocked: quick impulses race along every fibre, and the fibres near the touch fire hardest
+  float zn = exp(-dot(vQ - uZapP, vQ - uZapP) * 3.5);
+  float zph = fract(vD * 2.3 + vF * 3.1 - uTime * 4.8);
+  float zp = smoothstep(0.86, 0.98, zph) * (1.0 - smoothstep(0.98, 1.0, zph)) * uZap * (0.55 + 0.45 * zf) * (0.75 + 0.9 * zn);
+  pulse = max(pulse, zp) + uZap * zn * zf * 0.35;
   float k = clamp(pulse * 1.1 + tip, 0.0, 1.0);
   if (uLight < 0.5) gl_FragColor = glow(mix(uCol, uPulse, k) * (0.36 + pulse * 1.2 + tip * 1.4 + uZap * 0.12) * uAlpha);
   else gl_FragColor = vec4(mix(uCol, uPulse, k), clamp(0.45 + pulse * 0.55 + tip + uZap * 0.1, 0.0, 1.0) * uAlpha);
@@ -602,7 +630,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   const haloU = { uInflate: { value: 0.034 }, uReveal: bodyU.uReveal, uLight: bodyU.uLight, uAlpha: { value: 0 }, uRim: { value: new THREE.Color() }, uAx: uniforms.uAx, uAx0: uniforms.uAx0, uTA: bodyU.uTA, uTB: bodyU.uTB };
   const haloMat = new THREE.ShaderMaterial({ uniforms: haloU, vertexShader: BR_VERT, fragmentShader: HALO_FRAG, transparent: true, depthWrite: false, side: THREE.BackSide });
   for (const m of [depthMat, holoMat, haloMat]) m.extensions = { derivatives: true };
-  const nerveU = { uTime: { value: 0 }, uGrow: { value: -1 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uZap: bodyU.uZap, uTipEnd: { value: 2.6 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() }, uAx: uniforms.uAx, uAx0: uniforms.uAx0 };
+  const nerveU = { uTime: { value: 0 }, uGrow: { value: -1 }, uAlpha: { value: 0 }, uLight: { value: 0 }, uZap: bodyU.uZap, uZapP: bodyU.uZapP, uTipEnd: { value: 2.6 }, uCol: { value: new THREE.Color() }, uPulse: { value: new THREE.Color() }, uAx: uniforms.uAx, uAx0: uniforms.uAx0 };
   const nerveMat = new THREE.ShaderMaterial({ uniforms: nerveU, vertexShader: N_VERT, fragmentShader: N_FRAG, transparent: true, depthWrite: false, depthTest: false });
   const linkMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
   let body = null, bodyFailed = false, hitMesh = null;
@@ -1189,7 +1217,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const L = uniforms.uAxL.value;
     const reveal = -0.06 + (L + 0.14) * clamp01((morph - 0.35) / 0.55);
     bodyU.uReveal.value = morph > 0 ? reveal : -9;
-    haloU.uAlpha.value = clamp01((morph - 0.45) * 2) * (0.55 + 0.45 * fx + zapLevel * 0.15);
+    haloU.uAlpha.value = clamp01((morph - 0.45) * 2) * (0.55 + 0.45 * fx + zapLevel * 0.25);
     // a band of light rides the print front, then keeps running through the brain with the data
     const sweep = ((time * 0.32) % 1.4) * (L + 0.5) - 0.25;
     bodyU.uScan.value = morph < 1 ? reveal : reveal + (sweep - reveal) * fx;

@@ -323,6 +323,9 @@ html[lang='en'] .title { letter-spacing: -.035em; }
    thin line for a frame while the page scrolls over the moving hero */
 .rv.in { opacity: 1; transform: none; filter: none; }
 .glass.rv.in, .edu.rv.in, .home.rv.in { transform: translateZ(0); }
+/* glass cards rise and fade in without the blur: a filter on a backdrop-blurred element makes the
+   browser rebuild its layer when the filter ends, which shows as a one-frame blink */
+.glass.rv, .glass.rv.in { filter: none; }
 .glass { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 body.instant .rv { transition: none !important; }
 
@@ -430,7 +433,8 @@ html[lang='ar'] .num { margin-inline-start: 0; }
 .featured .num { font-size: clamp(76px, 10vw, 150px); }
 .stat p { color: var(--muted); font-size: 17px; font-weight: 500; margin-top: 10px; line-height: 1.45; }
 .featured p { font-size: clamp(18px, 1.6vw, 22px); color: var(--text-2); }
-.stat-ic { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--glass-2); color: var(--accent); font-size: 22px; border: 1px solid var(--stroke); }
+.stat-ic { display: flex; }
+.stat-ic .squircle { --s: 48px; }
 .spark { display: flex; align-items: flex-end; gap: clamp(4px, .6vw, 8px); height: clamp(110px, 14vw, 190px); direction: ltr; }
 .spark i { flex: 1; height: calc(var(--h) * 100%); border-radius: 7px 7px 3px 3px; background: var(--grad-v); opacity: .9; transform: scaleY(0); transform-origin: bottom; transition: transform 1.1s var(--out); transition-delay: calc(.25s + var(--j) * 50ms); }
 .stat.in .spark i { transform: scaleY(1); }
@@ -485,7 +489,7 @@ html[lang='ar'] .num { margin-inline-start: 0; }
 }
 /* mouse: the glass lifts towards you; touch: it gives under the finger and springs back */
 @media (hover: hover) {
-  .app:hover .squircle, .seals > span:hover .squircle, .row:hover .squircle { scale: 1.08; translate: 0 -2px; filter: brightness(1.08) saturate(1.08); }
+  .app:hover .squircle, .seals > span:hover .squircle, .row:hover .squircle, .stat:hover .stat-ic .squircle { scale: 1.08; translate: 0 -2px; filter: brightness(1.08) saturate(1.08); }
 }
 .app:active .squircle, .seals > span:active .squircle, .row:active .squircle { scale: .9; filter: brightness(1.16) saturate(1.1); transition-duration: .16s, .16s, .16s; }
 .squircle.sm { --s: 40px; }
@@ -621,7 +625,7 @@ html[dir='rtl'] .edu { background: radial-gradient(80% 90% at 0% 0%, rgba(103, 2
   .num { font-size: 46px; }
   .featured .num { font-size: 72px; }
   .stat p { font-size: 15px; }
-  .stat-ic { width: 38px; height: 38px; border-radius: 12px; font-size: 19px; }
+  .stat-ic .squircle { --s: 42px; }
   .job { border-radius: 28px; padding: 24px 20px; }
   .job h3 { font-size: 19px; }
   .job li { font-size: 15.5px; }
