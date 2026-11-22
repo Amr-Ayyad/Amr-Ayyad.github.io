@@ -122,14 +122,14 @@ export const CV = {
     { icon: 'sigma', grad: ['#c9ced6', '#6b7280'], title: { ar: 'التحليل الإحصائي باستخدام SPSS', en: 'Statistical Analysis with SPSS' }, note: { ar: 'قيد الدراسة', en: 'In progress' } },
   ],
 
-  // البطاقات التي تظهر حول الإنسان ثلاثي الأبعاد في الواجهة
+  // البطاقات حول الدماغ في الواجهة: البيانات الخام، الدماغ، وثلاثة من القرارات الخمس التي تخرج منه
   callouts: {
     // each label is also a link: "to" is the section it opens
-    brain: { to: 'learn', t: { ar: 'ذكاء اصطناعي', en: 'Artificial Intelligence' }, s: { ar: 'دراستي وشهاداتي', en: 'Studies & certificates' } },
-    rhand: { to: 'work', t: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' }, s: { ar: 'لوحات مؤشرات صمّمتها', en: 'Dashboards I built' } },
-    lhand: { to: 'tools', t: { ar: 'Excel متقدم', en: 'Advanced Excel' }, s: { ar: 'أدواتي اليومية', en: 'My everyday toolkit' } },
-    heart: { to: 'about', t: { ar: 'شغف وعمل جماعي', en: 'Passion & teamwork' }, s: { ar: 'نبذة عني', en: 'About me' } },
-    base: { to: 'numbers', t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'بيانات حلّلتها', en: 'analyzed' } },
+    raw: { to: 'numbers', t: { ar: '2.5M+ سجل', en: '2.5M+ records' }, s: { ar: 'بيانات خام حلّلتها', en: 'raw data I analyzed' } },
+    brain: { to: 'learn', t: { ar: 'تحليل وذكاء اصطناعي', en: 'Analysis & AI' }, s: { ar: 'دراستي في علم البيانات', en: 'My Data Science studies' } },
+    o1: { to: 'work', t: { ar: 'لوحات مؤشرات', en: 'Dashboards' }, s: { ar: 'Power BI\u00a0· Metabase', en: 'Power BI\u00a0· Metabase' } },
+    o2: { to: 'tools', t: { ar: 'أدواتي', en: 'Toolkit' }, s: { ar: 'Excel\u00a0· قواعد البيانات', en: 'Excel\u00a0· Databases' } },
+    o3: { to: 'about', t: { ar: 'قرارات واضحة', en: 'Clear decisions' }, s: { ar: 'نبذة عني', en: 'About me' } },
   },
 };
 
