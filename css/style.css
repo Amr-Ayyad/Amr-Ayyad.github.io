@@ -155,6 +155,8 @@ bdi { unicode-bidi: isolate; }
 .island .ico { display: grid; place-items: center; font-size: 16px; color: #fff; }
 .island .ico .ic { width: 16px; height: 16px; }
 .island .txt { overflow: hidden; text-overflow: ellipsis; }
+.island.tight .island-inner { padding: 0 11px; gap: 6px; }
+.island.bare .ico { display: none; }
 .island .live { width: 8px; height: 8px; border-radius: 50%; background: #32d74b; box-shadow: 0 0 0 0 rgba(50, 215, 75, .6); animation: live 1.8s ease-out infinite; }
 @keyframes live { 70% { box-shadow: 0 0 0 7px rgba(50, 215, 75, 0); } 100% { box-shadow: 0 0 0 0 rgba(50, 215, 75, 0); } }
 .spinner { width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .18); border-top-color: #5ee3f7; border-inline-end-color: #38bdf8; animation: rot .9s linear infinite; }
@@ -495,8 +497,14 @@ html[dir='rtl'] .edu { background: radial-gradient(80% 90% at 0% 0%, rgba(103, 2
 }
 @media (max-width: 400px) {
   .hero { padding-inline: 16px; }
+  .controls { gap: 2px; padding: 2px; }
   .cta { gap: 10px; }
   .btn { padding: 0 18px; gap: 8px; font-size: 15.5px; }
+}
+@media (max-width: 340px) {
+  /* too narrow to centre the island between the switches: it takes the space beside them */
+  .statusbar { grid-template-columns: 0 minmax(0, 1fr) auto; }
+  .island { justify-self: center; }
 }
 @media (max-height: 560px) and (min-aspect-ratio: 23/20) {
   .name { font-size: 40px; }
