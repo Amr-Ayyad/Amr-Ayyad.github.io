@@ -102,58 +102,58 @@ bdi { unicode-bidi: isolate; }
 
 
 /* ── Glass ── */
-/* Thick Liquid Glass panels, like an iPhone folder: the body is frosted, the edge reads as a rounded
-   bevel of glass. Light gathers in a band just inside the edge (brighter at the top, a cool refracted
-   glow at the bottom), and a bright rim catches the light on the side facing it and again on the far
-   corner, with a faint cool and warm dispersion between. The rim turns with --la, which follows the
-   mouse (app.js), so the edges glint as the pointer moves. */
+/* Thick turquoise glass, like a glass tube around every panel: a wide coloured rim (bright at the top
+   and bottom, deeper on the sides), a fine light line just inside it, gloss along the inner top edge,
+   and a soft turquoise glow outside. A glint slides around the rim with --la, which follows the mouse. */
+:root {
+  --rim-w: 3px;
+  --rim-grad: linear-gradient(180deg, #8af2ff 0%, #22d3ee 22%, #0891b2 52%, #0ea5c6 78%, #67e8f9 100%);
+}
 .glass {
   position: relative; isolation: isolate;
-  background: linear-gradient(150deg, rgba(34, 211, 238, .1), rgba(34, 211, 238, 0) 36%, rgba(6, 182, 212, 0) 70%, rgba(6, 182, 212, .07)), var(--glass);
+  background: linear-gradient(180deg, rgba(34, 211, 238, .1), rgba(34, 211, 238, 0) 30%, rgba(6, 182, 212, 0) 70%, rgba(6, 182, 212, .08)), var(--glass);
   -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(34, 211, 238, .16);
+  border: 0;
   box-shadow: var(--shadow),
-    inset 0 1px 0 rgba(61, 211, 242, .55),
-    inset 0 4px 2px -3px rgba(34, 211, 238, .4),
-    inset 0 16px 24px -16px rgba(34, 211, 238, .32),
-    inset 0 -16px 26px -16px rgba(6, 182, 212, .32),
-    inset 16px 0 24px -18px rgba(34, 211, 238, .2),
-    inset -16px 0 24px -18px rgba(14, 165, 233, .14),
-    inset 0 -4px 2px -3px rgba(6, 182, 212, .32),
-    inset 0 -1px 0 rgba(34, 211, 238, .2);
+    0 0 0 1px rgba(6, 95, 120, .55),
+    0 0 18px -4px rgba(34, 211, 238, .4),
+    inset 0 0 0 calc(var(--rim-w) + 1.2px) rgba(186, 246, 255, .4),
+    inset 0 calc(var(--rim-w) + 4px) 4px -3px rgba(220, 252, 255, .55),
+    inset 0 calc(-1 * var(--rim-w) - 4px) 4px -3px rgba(103, 232, 249, .4),
+    inset 0 18px 26px -18px rgba(34, 211, 238, .3),
+    inset 0 -18px 26px -18px rgba(6, 182, 212, .3);
 }
-/* the rim: aqua glass, brightest where it faces the light */
+/* the rim itself */
 .glass::before {
-  content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; z-index: 1; padding: 1.6px;
-  background: conic-gradient(from var(--la, 315deg),
-    rgba(94, 234, 250, .95), rgba(34, 211, 238, .75) 7%, rgba(8, 145, 178, .18) 20%, rgba(14, 165, 233, .28) 36%,
-    rgba(45, 212, 238, .7) 50%, rgba(6, 182, 212, .45) 57%, rgba(8, 145, 178, .14) 72%, rgba(34, 211, 238, .6) 92%, rgba(94, 234, 250, .95));
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1; padding: var(--rim-w);
+  background: conic-gradient(from var(--la, 315deg), rgba(230, 253, 255, .85), rgba(230, 253, 255, 0) 12%, rgba(230, 253, 255, 0) 45%, rgba(230, 253, 255, .4) 50%, rgba(230, 253, 255, 0) 56%, rgba(230, 253, 255, 0) 88%, rgba(230, 253, 255, .85)), var(--rim-grad);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: .95;
 }
 .glass::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(34, 211, 238, .12), transparent 46%);
+  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(34, 211, 238, .13), transparent 46%);
   opacity: 0; transition: opacity .5s;
 }
 .glass:hover::after { opacity: 1; }
 :root[data-theme='light'] .glass {
-  background: linear-gradient(150deg, rgba(207, 250, 254, .8), rgba(207, 250, 254, 0) 42%, rgba(103, 232, 249, 0) 70%, rgba(103, 232, 249, .16)), var(--glass);
-  border-color: rgba(6, 182, 212, .22);
+  background: linear-gradient(180deg, rgba(240, 253, 255, .92), rgba(207, 250, 254, .62)), var(--glass);
   box-shadow: var(--shadow),
-    inset 0 1px 0 rgba(255, 255, 255, .9),
-    inset 0 14px 22px -16px rgba(103, 232, 249, .45),
-    inset 0 -14px 24px -16px rgba(8, 145, 178, .2),
-    inset 14px 0 22px -18px rgba(103, 232, 249, .35),
-    inset -14px 0 22px -18px rgba(34, 211, 238, .25),
-    inset 0 -4px 2px -3px rgba(6, 182, 212, .28);
+    0 0 0 1px rgba(8, 145, 178, .4),
+    0 0 16px -4px rgba(34, 211, 238, .45),
+    inset 0 0 0 calc(var(--rim-w) + 1.2px) rgba(255, 255, 255, .75),
+    inset 0 calc(var(--rim-w) + 4px) 4px -3px rgba(255, 255, 255, .9),
+    inset 0 calc(-1 * var(--rim-w) - 4px) 4px -3px rgba(165, 243, 252, .6);
 }
-:root[data-theme='light'] .glass::before {
-  background: conic-gradient(from var(--la, 315deg),
-    rgba(34, 211, 238, .95), rgba(6, 182, 212, .75) 8%, rgba(8, 145, 178, .25) 22%, rgba(14, 116, 144, .18) 36%,
-    rgba(34, 211, 238, .8) 50%, rgba(6, 182, 212, .5) 58%, rgba(14, 116, 144, .16) 74%, rgba(34, 211, 238, .75) 92%, rgba(34, 211, 238, .95));
+:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(165, 243, 252, .6), transparent 46%); }
+/* the same tube rim on the solid pills: the Dynamic Island and the main button */
+.island, .btn.primary {
+  border: 2.5px solid transparent;
+  background: linear-gradient(var(--pill-bg), var(--pill-bg)) padding-box, var(--rim-grad) border-box;
 }
-:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(165, 243, 252, .7), transparent 46%); }
+.island { --pill-bg: #000; box-sizing: border-box; }
+.btn.primary { --pill-bg: var(--btn-bg); }
 
 /* ── Status bar · Dynamic Island · switches ── */
 .statusbar {
@@ -166,12 +166,12 @@ bdi { unicode-bidi: isolate; }
 .clock { justify-self: start; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums; letter-spacing: 0; padding-inline: 8px; direction: ltr; }
 .island {
   grid-column: 2; position: relative; height: 37px; width: 126px; border-radius: 22px;
-  background: #000; color: #fff; border: 0; cursor: pointer; overflow: hidden;
+  color: #fff; cursor: pointer; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   transition: width .6s var(--spring), height .6s var(--spring), transform .25s ease, box-shadow .4s;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, .09), 0 10px 26px -12px rgba(0, 0, 0, .7);
+  box-shadow: 0 0 16px -4px rgba(34, 211, 238, .45), inset 0 2px 2px -1px rgba(220, 252, 255, .35), 0 10px 26px -12px rgba(0, 0, 0, .7);
 }
-:root[data-theme='light'] .island { box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .45); }
+:root[data-theme='light'] .island { box-shadow: 0 0 16px -4px rgba(34, 211, 238, .45), inset 0 2px 2px -1px rgba(220, 252, 255, .35), 0 10px 28px -12px rgba(0, 0, 0, .45); }
 .island:active { transform: scale(.96); }
 .island-inner {
   display: flex; align-items: center; gap: 9px; padding: 0 16px; white-space: nowrap;
@@ -377,9 +377,9 @@ html[lang='en'] .name { letter-spacing: -.04em; }
 }
 .btn:active { transform: scale(.96); }
 .btn .ic { width: 19px; height: 19px; }
-.btn.primary { background: var(--btn-bg); color: var(--btn-fg); box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .6); }
+.btn.primary { color: var(--btn-fg); box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .6); }
 .btn.primary:hover { box-shadow: 0 16px 36px -14px rgba(61, 211, 242, .5); }
-.btn.glass { color: var(--text); box-shadow: inset 0 1px 0 var(--hi); }
+.btn.glass { color: var(--text); }
 .skip {
   position: fixed; z-index: 65; left: 50%; bottom: max(26px, env(safe-area-inset-bottom)); transform: translateX(-50%);
   height: 40px; padding: 0 20px; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text);

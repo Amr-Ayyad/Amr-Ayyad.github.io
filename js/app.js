@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261122202445';
-import { icon } from './icons.js?v=20261122202445';
+import { CV, UI } from './data.js?v=20261123181326';
+import { icon } from './icons.js?v=20261123181326';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -281,8 +281,46 @@ document.addEventListener('click', (e) => {
   const el = document.getElementById(a.getAttribute('href').slice(1));
   if (!el) return;
   e.preventDefault();
-  el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  glideTo(el);
 });
+// an iPhone-like glide: it leaves quickly and settles softly, the same feel for a short hop or the whole
+// page; a wheel, touch or key from the reader takes over at once
+let glideRaf = 0, glideStop = null;
+// iOS's own motion curve, cubic-bezier(0.32, 0.72, 0, 1)
+function iosEase(t) {
+  const x1 = 0.32, y1 = 0.72, x2 = 0, y2 = 1;
+  const bx = (u) => 3 * x1 * u * (1 - u) * (1 - u) + 3 * x2 * u * u * (1 - u) + u * u * u;
+  const by = (u) => 3 * y1 * u * (1 - u) * (1 - u) + 3 * y2 * u * u * (1 - u) + u * u * u;
+  let lo = 0, hi = 1, u = t;
+  for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; if (bx(u) < t) lo = u; else hi = u; }
+  return by(u);
+}
+function glideTo(el) {
+  const pad = parseFloat(getComputedStyle(doc).scrollPaddingTop) || 0;
+  const max = doc.scrollHeight - innerHeight;
+  const from = scrollY, to = Math.max(0, Math.min(max, el.getBoundingClientRect().top + scrollY - pad));
+  const dist = to - from;
+  if (glideStop) glideStop();
+  cancelAnimationFrame(glideRaf);
+  if (reduced || Math.abs(dist) < 2) { doc.style.scrollBehavior = 'auto'; scrollTo(0, to); doc.style.scrollBehavior = ''; return; }
+  const dur = Math.min(900, 380 + Math.sqrt(Math.abs(dist)) * 7);
+  const t0 = performance.now();
+  doc.style.scrollBehavior = 'auto';
+  const stop = () => {
+    glideStop = null;
+    cancelAnimationFrame(glideRaf); doc.style.scrollBehavior = '';
+    removeEventListener('wheel', stop); removeEventListener('touchstart', stop); removeEventListener('keydown', stop);
+  };
+  glideStop = stop;
+  addEventListener('wheel', stop, { passive: true }); addEventListener('touchstart', stop, { passive: true }); addEventListener('keydown', stop);
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / dur);
+    const e = iosEase(t);
+    scrollTo(0, from + dist * e);
+    if (t < 1) glideRaf = requestAnimationFrame(step); else stop();
+  };
+  glideRaf = requestAnimationFrame(step);
+}
 menu.addEventListener('click', (e) => { if (e.target.closest('a')) toggleMenu(false); });
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') toggleMenu(false);
@@ -534,7 +572,7 @@ islandIntro();
 onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 
-import('./scene.js?v=20261122202445')
+import('./scene.js?v=20261123181326')
   .then((m) => {
     scene = m.createScene({
       canvas,
