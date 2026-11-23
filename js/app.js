@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261123181326';
-import { icon } from './icons.js?v=20261123181326';
+import { CV, UI } from './data.js?v=20261123182435';
+import { icon } from './icons.js?v=20261123182435';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -286,9 +286,9 @@ document.addEventListener('click', (e) => {
 // an iPhone-like glide: it leaves quickly and settles softly, the same feel for a short hop or the whole
 // page; a wheel, touch or key from the reader takes over at once
 let glideRaf = 0, glideStop = null;
-// iOS's own motion curve, cubic-bezier(0.32, 0.72, 0, 1)
+// a quick, smooth move: it gathers speed for a moment, travels fast and settles softly
 function iosEase(t) {
-  const x1 = 0.32, y1 = 0.72, x2 = 0, y2 = 1;
+  const x1 = 0.42, y1 = 0.06, x2 = 0.18, y2 = 1;
   const bx = (u) => 3 * x1 * u * (1 - u) * (1 - u) + 3 * x2 * u * u * (1 - u) + u * u * u;
   const by = (u) => 3 * y1 * u * (1 - u) * (1 - u) + 3 * y2 * u * u * (1 - u) + u * u * u;
   let lo = 0, hi = 1, u = t;
@@ -303,7 +303,7 @@ function glideTo(el) {
   if (glideStop) glideStop();
   cancelAnimationFrame(glideRaf);
   if (reduced || Math.abs(dist) < 2) { doc.style.scrollBehavior = 'auto'; scrollTo(0, to); doc.style.scrollBehavior = ''; return; }
-  const dur = Math.min(900, 380 + Math.sqrt(Math.abs(dist)) * 7);
+  const dur = Math.min(1150, 450 + Math.sqrt(Math.abs(dist)) * 8);
   const t0 = performance.now();
   doc.style.scrollBehavior = 'auto';
   const stop = () => {
@@ -572,7 +572,7 @@ islandIntro();
 onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 
-import('./scene.js?v=20261123181326')
+import('./scene.js?v=20261123182435')
   .then((m) => {
     scene = m.createScene({
       canvas,

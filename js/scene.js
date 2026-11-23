@@ -1070,6 +1070,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
   }
 
   // ── timeline ──
+  let scrolledAt = 0;
   let T = reduced ? T_END : 0, speed = 1, time = 0, last = performance.now(), scrollK = 0, sk = 0, canvasOp = -1, frameNo = 0, freezeT = null;
   const fired = {};
   const fire = (name) => { if (!fired[name]) { fired[name] = true; onPhase && onPhase(name); } };
@@ -1173,7 +1174,9 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     const dt = Math.min(rawDt, 0.05);
     last = now;
     frameNo++;
-    if (scrollK >= 0.999 && frameNo % 2) return; // half rate when it's only a backdrop
+    // as a backdrop it runs at half rate, and holds still while the page moves: every frame of the canvas
+    // makes the browser re-blur each glass card above it, which is what made scrolling stutter
+    if (scrollK >= 0.999 && (frameNo % 2 || now - scrolledAt < 220)) return;
     time += dt;
     first = false;
     // the story plays a little brisker than its own timings (about 4.6 s from the network to the labels)
@@ -1281,7 +1284,7 @@ export function createScene({ canvas, calloutsEl, labels, theme, lang, reduced, 
     finish() { if (T < T_END && freezeT === null) T = T_END; },
     setTheme(th) { setTheme(th); uniforms.uSize.value = pal.size * dpr; },
     setLang(l, map) { side = l === 'ar' ? -1 : 1; layout(); setLabels(map); layout(); },
-    setScroll(k) { scrollK = k; },
+    setScroll(k) { scrollK = k; scrolledAt = performance.now(); },
     relayout() { layout(); measure(); layout(); },
     get done() { return T >= T_READY; },
     freeze(t) { freezeT = t; },

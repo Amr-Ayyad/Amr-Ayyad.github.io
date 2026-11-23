@@ -28,8 +28,8 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preload" href="assets/brain.bin" as="fetch" crossorigin="anonymous">
-<link rel="modulepreload" href="js/scene.js?v=20261123181326">
-<link rel="stylesheet" href="css/style.css?v=20261123181326">
+<link rel="modulepreload" href="js/scene.js?v=20261123182435">
+<link rel="stylesheet" href="css/style.css?v=20261123182435">
 <script>
   (function () {
     var d = document.documentElement, t, l;
@@ -40,7 +40,7 @@
     // a reload always opens at the top, so the intro plays calmly from its start
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     // never show a stale copy: if a newer version is live than this page, load it once, past every cache
-    var v = '20261123181326', q = /[?&]v=\d+/.test(location.search);
+    var v = '20261123182435', q = /[?&]v=\d+/.test(location.search);
     if (q) history.replaceState(null, '', location.pathname + location.hash);
     try {
       fetch('version.json?' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
@@ -52,7 +52,7 @@
     } catch (e) {}
   })();
 </script>
-<script type="module" src="js/app.js?v=20261123181326"></script>
+<script type="module" src="js/app.js?v=20261123182435"></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Person","name":"Amr Haitham Abu Ayyad","alternateName":"عمرو هيثم أبو عياد","jobTitle":"Data Analyst","url":"https://amr-ayyad.github.io/","email":"mailto:amrooabuayyad@gmail.com","image":"https://amr-ayyad.github.io/assets/og.jpg","knowsLanguage":["ar","en"],"knowsAbout":["Data analysis","Power BI","Metabase","Excel","Dashboards","Data visualization","Machine learning"]}
 </script>
