@@ -102,51 +102,75 @@ bdi { unicode-bidi: isolate; }
 
 
 /* ── Glass ── */
-/* Thick turquoise glass with a rounded, tube-like bevel (after Amr's reference pill): across the bevel
-   the glass runs from a deep turquoise outer edge, through saturated turquoise, into a wide band of
-   bright reflected light, and melts into the frosted body. A glint slides round the bevel with --la. */
-:root {
-  --bev: 12px;
-  --bev-grad: linear-gradient(180deg, #5eeafc 0%, #14c4e4 30%, #0a9fc0 55%, #12b8d8 80%, #67e8f9 100%);
-}
+/* A slab of turquoise glass, drawn from an iPhone close-up (Amr's reference pill):
+   - the colour lives along the top and bottom edges only: a crisp, saturated band, deepest at the very edge,
+     thin at the top, thicker at the bottom, with a paler refracted glow rising above the bottom band
+   - the colour thins out as the edge turns round the rounded ends, which stay clear:
+     a fine dark outline, then a band of white light just inside
+   - a bright white highlight runs under the top band
+   - no outer glow, only a soft shadow under the slab
+   ::after holds the clear glass (outline, white light), ::before the colour on top of it, faded towards the ends.
+   --b scales the edge, --fade is how far in from each end the colour reaches full strength. */
 .glass {
+  --b: 1px; --fade: 26px;
   position: relative; isolation: isolate;
-  background: linear-gradient(180deg, rgba(34, 211, 238, .12), rgba(34, 211, 238, .02) 30%, rgba(6, 182, 212, .02) 70%, rgba(6, 182, 212, .1)), var(--glass);
+  background: var(--glass);
   -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
   border: 0;
-  box-shadow: var(--shadow), 0 0 22px -6px rgba(34, 211, 238, .55),
-    inset 0 0 calc(var(--bev) * 2) calc(var(--bev) * .4) rgba(103, 232, 249, .14);
+  box-shadow: var(--shadow), 0 calc(var(--b) * 7) calc(var(--b) * 16) calc(var(--b) * -7) var(--g-drop);
 }
-.btn.glass, .controls, .rail { --bev: 6px; }
-/* the bevel */
+.btn.glass { --b: 1px; --fade: 30px; }
+.rail { --b: .85px; --fade: 22px; }
+.controls { --b: .7px; --fade: 16px; }
+.island { --b: .65px; --fade: 16px; position: relative; isolation: isolate; background: #000; border: 0; }
+.btn.primary { --b: .9px; --fade: 30px; position: relative; isolation: isolate; background: var(--btn-bg); }
+/* the colour */
 .glass::before, .island::before, .btn.primary::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1; padding: var(--bev);
-  background:
-    conic-gradient(from var(--la, 315deg), rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 10%, rgba(255, 255, 255, 0) 44%, rgba(255, 255, 255, .25) 50%, rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0) 90%, rgba(255, 255, 255, .55)),
-    var(--bev-grad);
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
   box-shadow:
-    inset 0 0 0 1.5px rgba(4, 72, 92, .9),
-    inset 0 0 calc(var(--bev) * .3) calc(var(--bev) * .32) rgba(8, 120, 150, .95),
-    inset 0 0 calc(var(--bev) * .35) calc(var(--bev) * .62) rgba(20, 196, 228, .95),
-    inset 0 calc(var(--bev) * .12) calc(var(--bev) * .4) calc(var(--bev) * .86) rgba(235, 254, 255, .95);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    inset 0 calc(var(--b) * 1.3) calc(var(--b) * .5) calc(var(--b) * -.3) var(--g-deep),
+    inset 0 calc(var(--b) * -2) calc(var(--b) * .6) calc(var(--b) * -.4) var(--g-deep),
+    inset 0 calc(var(--b) * 3.4) calc(var(--b) * .9) calc(var(--b) * -.6) var(--g-top),
+    inset 0 calc(var(--b) * -5.6) calc(var(--b) * 1.1) calc(var(--b) * -.8) var(--g-bot),
+    inset 0 calc(var(--b) * -13) calc(var(--b) * 8) calc(var(--b) * -6) var(--g-refr);
+  -webkit-mask: linear-gradient(90deg, rgba(0, 0, 0, .1), #000 var(--fade), #000 calc(100% - var(--fade)), rgba(0, 0, 0, .1));
+  mask: linear-gradient(90deg, rgba(0, 0, 0, .1), #000 var(--fade), #000 calc(100% - var(--fade)), rgba(0, 0, 0, .1));
 }
-.glass::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
-  background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(34, 211, 238, .13), transparent 46%);
-  opacity: 0; transition: opacity .5s;
+/* the clear glass */
+.glass::after, .island::after, .btn.primary::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+  box-shadow:
+    inset 0 0 0 1px var(--g-line),
+    inset calc(var(--b) * 1.6) 0 calc(var(--b) * 1) calc(var(--b) * -.6) var(--g-rim),
+    inset calc(var(--b) * -1.6) 0 calc(var(--b) * 1) calc(var(--b) * -.6) var(--g-rim),
+    inset 0 0 calc(var(--b) * 2.4) calc(var(--b) * 2.2) var(--g-ring),
+    inset 0 calc(var(--b) * 7) calc(var(--b) * 2.4) calc(var(--b) * -3.2) var(--g-hi);
 }
-.glass:hover::after { opacity: 1; }
-:root[data-theme='light'] .glass {
-  background: linear-gradient(180deg, rgba(240, 253, 255, .92), rgba(207, 250, 254, .62)), var(--glass);
-  box-shadow: var(--shadow), 0 0 18px -6px rgba(34, 211, 238, .6),
-    inset 0 0 calc(var(--bev) * 2) calc(var(--bev) * .4) rgba(103, 232, 249, .25);
+:root {
+  --g-line: rgba(150, 225, 240, .2);
+  --g-rim: rgba(0, 0, 0, .55);
+  --g-ring: rgba(205, 248, 255, .16);
+  --g-deep: rgba(3, 92, 122, 1);
+  --g-top: rgba(12, 182, 218, .95);
+  --g-bot: rgba(8, 170, 210, 1);
+  --g-hi: rgba(225, 252, 255, .5);
+  --g-refr: rgba(80, 220, 245, .3);
+  --g-drop: rgba(0, 40, 60, .5);
 }
-:root[data-theme='light'] .glass::after { background: radial-gradient(380px circle at var(--mx, 50%) var(--my, -30%), rgba(165, 243, 252, .6), transparent 46%); }
-/* the same bevel on the solid pills: the Dynamic Island and the main button */
-.island, .btn.primary { --bev: 4px; position: relative; isolation: isolate; }
-.island::before, .btn.primary::before { z-index: 2; }
+:root[data-theme='light'] {
+  --g-line: rgba(60, 80, 95, .38);
+  --g-rim: rgba(70, 85, 100, .5);
+  --g-ring: rgba(255, 255, 255, .95);
+  --g-deep: rgba(4, 100, 132, 1);
+  --g-top: rgba(14, 190, 226, .95);
+  --g-bot: rgba(8, 172, 214, 1);
+  --g-hi: rgba(255, 255, 255, 1);
+  --g-refr: rgba(100, 228, 248, .5);
+  --g-drop: rgba(10, 60, 80, .32);
+}
+.island, :root[data-theme='light'] .btn.primary { --g-line: rgba(150, 225, 240, .25); --g-rim: rgba(0, 0, 0, .6); --g-ring: rgba(205, 248, 255, .14); --g-deep: rgba(3, 92, 122, 1); --g-top: rgba(12, 182, 218, .95); --g-bot: rgba(8, 170, 210, 1); --g-hi: rgba(225, 252, 255, .45); --g-refr: rgba(80, 220, 245, .28); }
+:root:not([data-theme='light']) .btn.primary { --g-line: rgba(60, 80, 95, .38); --g-rim: rgba(70, 85, 100, .5); --g-ring: rgba(255, 255, 255, .95); --g-deep: rgba(4, 100, 132, 1); --g-top: rgba(14, 190, 226, .95); --g-bot: rgba(8, 172, 214, 1); --g-hi: rgba(255, 255, 255, 1); --g-refr: rgba(100, 228, 248, .5); }
+:root[data-theme='light'] .glass { background: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(240, 253, 255, .4)), var(--glass); }
 
 /* ── Status bar · Dynamic Island · switches ── */
 .statusbar {
@@ -162,9 +186,9 @@ bdi { unicode-bidi: isolate; }
   color: #fff; cursor: pointer; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   transition: width .6s var(--spring), height .6s var(--spring), transform .25s ease, box-shadow .4s;
-  box-shadow: 0 0 16px -4px rgba(34, 211, 238, .45), inset 0 2px 2px -1px rgba(220, 252, 255, .35), 0 10px 26px -12px rgba(0, 0, 0, .7);
+  box-shadow: 0 10px 26px -12px rgba(0, 0, 0, .7);
 }
-:root[data-theme='light'] .island { box-shadow: 0 0 16px -4px rgba(34, 211, 238, .45), inset 0 2px 2px -1px rgba(220, 252, 255, .35), 0 10px 28px -12px rgba(0, 0, 0, .45); }
+:root[data-theme='light'] .island { box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .45); }
 .island:active { transform: scale(.96); }
 .island-inner {
   display: flex; align-items: center; gap: 9px; padding: 0 16px; white-space: nowrap;

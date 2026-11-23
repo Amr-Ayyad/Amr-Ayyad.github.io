@@ -1,5 +1,5 @@
-import { CV, UI } from './data.js?v=20261123182435';
-import { icon } from './icons.js?v=20261123182435';
+import { CV, UI } from './data.js?v=20261123183746';
+import { icon } from './icons.js?v=20261123183746';
 
 const doc = document.documentElement;
 const body = document.body;
@@ -572,7 +572,7 @@ islandIntro();
 onScroll();
 if (document.fonts) document.fonts.ready.then(() => { fitIsland(); railBar(false); });
 
-import('./scene.js?v=20261123182435')
+import('./scene.js?v=20261123183746')
   .then((m) => {
     scene = m.createScene({
       canvas,
